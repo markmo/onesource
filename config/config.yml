@@ -1,0 +1,90 @@
+doc_types:
+  CHANNEL_ALERTS:
+    text_props:
+      - alert_title
+      - general_information
+  CHANNEL_WEBFORMS:
+    text_props:
+      - webform_title
+      - webform_description
+  CHANNEL_RULES:
+    text_props:
+      - rules_title
+      - rules_description
+  CHANNEL_CONTACTS:
+    text_props:
+      - title_of_contact
+      - description_of_group
+  CHANNEL_BANNERS:
+    text_props:
+      - banner_title
+  CHANNEL_WEB_APPS:
+    text_props:
+      - web_app_name
+      - web_app_url
+  CHANNEL_MESSAGES:
+    text_props:
+      - important_msg
+      - details
+  CHANNEL_DEVICES:
+    text_props:
+      - title
+  CHANNEL_HELP:
+    text_props:
+      - help_title
+      - help_description
+  CHANNEL_NEWS:
+    text_props:
+      - news_title
+      - news_announcement
+  CHANNEL_PROMPT:
+    text_props:
+      - title
+      - description
+      - key_points
+  CHANNEL_PRICING:
+    text_props:
+      - pricing_title
+      - pricing_description
+  CHANNEL_OFFERS:
+    text_props:
+      - overview_title
+      - offers_title
+      - offer_overview_description
+      - offer_pricing_description
+      - offer_process_description
+      - offer_support_description
+      - offers_rules_description
+  CHANNEL_COMMUNICATIONS:
+    text_props:
+      - communication_title
+      - what_is_this_for
+  CHANNEL_ANSWERFLOW_STEPS:
+    text_props:
+      - step_title
+      - reference_table
+  CHANNEL_OVERVIEW:
+    text_props:
+      - overview_title
+      - what_is_it_description
+      - why_do_i_want_it_description
+  CHANNEL_SUPPORT:
+    text_props:
+      - support_title
+      - process_description
+  CHANNEL_PRODUCTS:
+    text_props:
+      - title
+      - long_description
+      - pricing_description
+      - additional_charges
+      - addons
+      - included
+  CHANNEL_SYSTEM:
+    text_props:
+      - title
+      - details
+  CHANNEL_PROCESS:
+    text_props:
+      - process_title
+      - process_description
