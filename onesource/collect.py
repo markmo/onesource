@@ -15,6 +15,14 @@ class CollectStep(AbstractStep):
     Collect required text to extract features.
     """
 
+    @staticmethod
+    def load_config() -> Dict[str, Any]:
+        # get lists of data keys by `doc_type` to include in output
+        with open(CONFIG_FILE_PATH, 'r') as f:
+            config = yaml.load(f)
+
+        return config
+
     def __init__(self,
                  name: str,
                  source_key: str=None,
@@ -24,8 +32,9 @@ class CollectStep(AbstractStep):
         self.__source_iter = source_iter
         self.__output_handler = output_handler
 
-    def process_file(self, f: TextIO, c: Dict[str, Any], logger: Logger, a: Dict[str, Any], config: Dict[str, Any]):
+    def process_file(self, c: Dict[str, Any], logger: Logger, a: Dict[str, Any], f: TextIO) -> str:
         logger.debug('process file: {}'.format(f.name))
+        config = CollectStep.load_config()
         input_doc = json.load(f)
         metadata = input_doc['metadata']
         record_id = metadata['record_id']
@@ -60,13 +69,9 @@ class CollectStep(AbstractStep):
         })
         content = {'metadata': metadata, 'data': {'structured_content': structured_content, 'text': text}}
         self.__output_handler(output_path, content)
+        return output_path
 
     def run(self, c: Dict[str, Any], logger: Logger, a: Dict[str, Any]):
         file_paths = [x['path'] for x in c[self.source_key]]
-
-        # get lists of data keys by `doc_type` to include in output
-        with open(CONFIG_FILE_PATH, 'r') as f:
-            config = yaml.load(f)
-
         for f in self.__source_iter(file_paths):
-            self.process_file(f, c, logger, a, config)
+            self.process_file(c, logger, a, f)

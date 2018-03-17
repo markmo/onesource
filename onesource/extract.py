@@ -37,7 +37,7 @@ class ExtractStep(AbstractStep):
         self.__max_file_count = max_file_count
 
     # noinspection SpellCheckingInspection
-    def process_file(self, f: TextIO, c: Dict[str, Any], logger: Logger, a: Dict[str, Any]):
+    def process_file(self, c: Dict[str, Any], logger: Logger, a: Dict[str, Any], f: TextIO) -> str:
         logger.debug('process file: {}'.format(f.name))
         a.update({
             'data': {},
@@ -140,6 +140,7 @@ class ExtractStep(AbstractStep):
         })
         content = {'metadata': a['metadata'], 'data': a['data']}
         self.__output_handler(output_path, content)
+        return output_path
 
     def run(self, c: Dict[str, Any], logger: Logger, a: Dict[str, Any]):
         file_paths = [x['path'] for x in c[self.source_key]]
@@ -149,5 +150,5 @@ class ExtractStep(AbstractStep):
             if a['file_count'] > self.__max_file_count:
                 break
 
-            self.process_file(f, c, logger, a)
+            self.process_file(c, logger, a, f)
             a['file_count'] += 1

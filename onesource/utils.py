@@ -1,8 +1,10 @@
 from datetime import datetime
 import re
+import sys
+from typing import Callable
 
 
-def clean_text(text):
+def clean_text(text: str):
     """
     Remove non-ascii chars and extra whitespace.
 
@@ -43,7 +45,7 @@ end_tag_re = re.compile(r'>\s*$')
 variable_re = re.compile('^{[\w.]*}$')
 
 
-def fix_content(content):
+def fix_content(content: str):
     """
     Wrap text in HTML tags if not already.
 
@@ -206,3 +208,45 @@ def convert_dict_to_accumulator(x, factory=Accumulator):
         return type(x)(convert_dict_to_accumulator(v, factory) for v in x)
     else:
         return x
+
+
+# Hack to implement tail call optimization
+
+class TailRecursionException(BaseException):
+
+    def __init__(self, args, kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+
+def tailrec(fn: Callable):
+    """
+    This function decorates a function with tail call optimization. It does
+    this by throwing an exception if it is it's own grandparent, and catching
+    such exceptions to fake the tail call optimization. For example::
+
+        @tailrec
+            def factorial(n, acc=1):
+                if n == 0:
+                    return acc
+                return factorial(n - 1, n * acc)
+
+    This function fails if the decorated function recurses in a non-tail
+    context.
+    """
+
+    def func(*args, **kwargs):
+        # noinspection PyProtectedMember
+        f = sys._getframe()
+        if f.f_back and f.f_back.f_back and f.f_back.f_back.f_code == f.f_code:
+            raise TailRecursionException(args, kwargs)
+        else:
+            while True:
+                try:
+                    return fn(*args, **kwargs)
+                except TailRecursionException as e:
+                    args = e.args
+                    kwargs = e.kwargs
+
+    func.__doc__ = fn.__doc__
+    return func

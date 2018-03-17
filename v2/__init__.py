@@ -1,16 +1,13 @@
 from argparse import ArgumentParser
-from collect import CollectStep
 from datetime import datetime
-from extract import ExtractStep
-from extract_questions import ExtractQuestionsStep
 import json
 import logging
 from logging import Logger
 import os
-from pipeline import Pipeline
 import sys
 import tempfile
-from transform import TransformStep
+import time
+from workers import start
 
 
 def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, logger: Logger=None):
@@ -70,8 +67,10 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         with open(temp_path, 'w') as output_file:
             json.dump(control_data, output_file)
 
-    extract_step = ExtractStep('Extract text', 'files')
-    collect_step = CollectStep('Collect text')
+    start(control_data, logger)
+
+    while True:
+        time.sleep(1)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from logging import Logger
 import os
 import tempfile
 import traceback
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TextIO
 from utils import convert_name_to_underscore
 
 
@@ -24,6 +24,9 @@ class AbstractStep(object):
         """
         self.name = name
         self.__source_key = source_key
+
+    def process_file(self, c: Dict[str, Any], logger: Logger, a: Dict[str, Any], f: TextIO) -> str:
+        raise NotImplementedError
 
     @property
     def source_key(self):

@@ -1,4 +1,5 @@
-# Onesource
+Onesource
+=========
 
 Text processing pipeline.
 
@@ -16,7 +17,7 @@ for that file can begin without waiting for all files to be processed by a given
 `v2` is in development.
 
 To run v1, call `onesource/__init__.py` with the following arguments:
---read read root dir
---write write root dir
---temp temp dir (for control files)
--- overwrite overwrite existing files
+  --read read root dir
+  --write write root dir
+  --temp temp dir (for control files)
+  --overwrite overwrite existing files
