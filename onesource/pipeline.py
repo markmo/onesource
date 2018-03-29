@@ -107,7 +107,7 @@ class Pipeline(object):
 
                 control_data = write_control_file_start_step(step_name, control_data, temp_path)
 
-                logged = logged_decorator(logger, step)
+                logged = logged_decorator(logger, step.name)
                 tracked = tracked_decorator(step_name, control_data, accumulator, temp_path)
 
                 with logged, tracked:
@@ -143,23 +143,23 @@ def file_iter(file_paths: List[str]):
 
 
 @contextmanager
-def logged_decorator(logger: Logger, step: AbstractStep):
+def logged_decorator(logger: Logger, step_name: str):
     """
     Log execution of a pipeline step
 
     :param logger: Logger
-    :param step: pipeline step
+    :param step_name: pipeline step name
     :return:
     """
-    logger.debug('Start %s', step.name)
+    logger.debug('Start %s', step_name)
     try:
         yield
     except Exception as e:
-        logger.error('Abnormal end %s: %s', step.name, e)
+        logger.error('Abnormal end %s: %s', step_name, e)
         traceback.print_exc()
         raise e
 
-    logger.debug('End %s', step.name)
+    logger.debug('End %s', step_name)
 
 
 @contextmanager
@@ -181,7 +181,7 @@ def tracked_decorator(step_name: str,
         write_control_file(step_name, control_data, accumulator, temp_path)
 
 
-def output_handler(output_path: str, content: Dict[str, Any]):
+def output_handler(output_path: str, content: Dict[str, Any]) -> None:
     """
     Write output from step
 

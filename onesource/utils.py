@@ -1,3 +1,4 @@
+from copy import copy, deepcopy
 from datetime import datetime
 import re
 import sys
@@ -36,6 +37,30 @@ def convert_name_to_underscore(name: str):
     t = name.strip()
     t = re.sub(r'\s+', '_', t)
     return t.lower()
+
+
+def deep_update_(target, src, append_to_lists=False):
+    for k, v in src.items():
+        if type(v) == list:
+            if k in target:
+                if append_to_lists:
+                    target[k].extend(v)
+                else:
+                    target[k] = copy(v)
+            else:
+                target[k] = deepcopy(v)
+        elif type(v) == dict:
+            if k in target:
+                deep_update_(target[k], v)
+            else:
+                target[k] = deepcopy(v)
+        elif type(v) == set:
+            if k in target:
+                target[k].update(v.copy())
+            else:
+                target[k] = v.copy()
+        else:
+            target[k] = copy(v)
 
 
 start_tag_re = re.compile(r'^\s*<')

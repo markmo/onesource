@@ -1,12 +1,13 @@
 from argparse import ArgumentParser
 from datetime import datetime
+from functional import deep_update_
 import json
 import logging
 from logging import Logger
 import os
+from pipeline import output_handler as oh, write_control_file, write_control_file_start_step
 import sys
 import tempfile
-import time
 from workers import start
 
 
@@ -67,10 +68,22 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         with open(temp_path, 'w') as output_file:
             json.dump(control_data, output_file)
 
-    start(control_data, logger)
+    step_name = 'extract'
+    files_processed = []
+    files_output = []
 
-    while True:
-        time.sleep(1)
+    # working storage
+    accumulator = {
+        'files_processed': files_processed,
+        'files_output': files_output
+    }
+
+    control_data = write_control_file_start_step(step_name, control_data, temp_path)
+
+    a_update = start(control_data, step_name, oh, logger)
+    deep_update_(accumulator, a_update)
+
+    write_control_file(step_name, control_data, accumulator, temp_path)
 
 
 if __name__ == "__main__":

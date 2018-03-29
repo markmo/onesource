@@ -5,6 +5,8 @@ from utils import clean_text
 class AbstractExtractor(object):
     """
     Interface for extractor types to implement.
+
+    Extractors are stateful, so must be used per file.
     """
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
