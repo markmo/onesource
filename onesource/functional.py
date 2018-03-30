@@ -4,6 +4,7 @@ from io import BytesIO
 from lxml import etree
 from typing import Any, Dict, Iterator, List, Tuple
 from utils import clean_text, deep_update_, fix_content, get_iso_datetime_from_millis
+import yaml
 
 
 # Functional interface
@@ -23,10 +24,41 @@ def file_iter(file_paths: List[str]):
             yield file
 
 
-def process_file(stream: BytesIO,
-                 excluded_xml_tags: List[str],
-                 excluded_html_tags: List[str],
-                 ) -> Dict[str, Any]:
+def load_config(config_file_path: str) -> Dict[str, Any]:
+    # get lists of data keys by `doc_type` to include in output
+    with open(config_file_path, 'r') as f:
+        config = yaml.load(f)
+
+    return config
+
+
+def process_file_collect(input_doc: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = input_doc['metadata']
+    doc_type = metadata['doc_type']
+    text_props = set(config['doc_types'][doc_type]['text_props'])
+    data = input_doc['data']
+    structured_content = []
+    text = []
+    for key in text_props:
+        if key in data:
+            val = data[key]
+            for s in val['structured_content']:
+                structured_content.append(s)
+
+            t = val['text']
+            if isinstance(t, list):
+                for x in t:
+                    text.append(x)
+            else:
+                text.append(t)
+
+    return {'step': 'collect', 'data': {'structured_content': structured_content, 'text': text}, 'metadata': metadata}
+
+
+def process_file_extract(stream: BytesIO,
+                         excluded_xml_tags: List[str],
+                         excluded_html_tags: List[str],
+                         ) -> Dict[str, Any]:
     a = {
         'data': {},
         'is_data': False,
@@ -36,7 +68,7 @@ def process_file(stream: BytesIO,
         a_update = process_xml_element(el, event, a, excluded_html_tags)
         deep_update_(a, a_update)  # do not append to lists (default)
 
-    return {'data': a['data'], 'metadata': a['metadata']}
+    return {'step': 'extract', 'data': a['data'], 'metadata': a['metadata']}
 
 
 def process_html_element(el: etree.ElementBase,

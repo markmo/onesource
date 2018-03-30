@@ -10,7 +10,7 @@ doc_types:
   CHANNEL_RULES:
     text_props:
       - rules_title
-      - rules_description
+      - rules_desciption
   CHANNEL_CONTACTS:
     text_props:
       - title_of_contact

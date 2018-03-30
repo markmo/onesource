@@ -206,7 +206,10 @@ def get_temp_path(read_root_dir: str) -> str:
     return os.path.join(temp_dir, control_filename + '.json')
 
 
-def write_control_file_start_step(step_name: str, control_data: Dict[str, Any], temp_path: str=None) -> Dict[str, Any]:
+def write_control_file_start_step(step_name: str,
+                                  control_data: Dict[str, Any],
+                                  temp_path: str = None
+                                  ) -> Dict[str, Any]:
     """
     Update control file for start of step.
 
@@ -238,8 +241,9 @@ def write_control_file_start_step(step_name: str, control_data: Dict[str, Any], 
 def write_control_file(step_name: str,
                        control_data: Dict[str, Any],
                        accumulator: Dict[str, Any],
-                       temp_path: str=None,
-                       is_done: bool=False) -> Dict[str, Any]:
+                       temp_path: str = None,
+                       is_done: bool = False
+                       ) -> Dict[str, Any]:
     """
     Write job control data at current moment to a file at `temp_path`.
 

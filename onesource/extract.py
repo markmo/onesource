@@ -142,7 +142,6 @@ class ExtractStep(AbstractStep):
         output_path = os.path.join(write_root_dir, output_filename)
         update_control_info_(file.name, output_filename, output_path, accumulator)
         self.write_output(accumulator, output_path)
-
         return output_path
 
     def write_output(self, accumulator: Dict[str, Any], output_path: str) -> None:

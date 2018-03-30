@@ -10,6 +10,7 @@ import os
 from pipeline import Pipeline
 import sys
 import tempfile
+from timeit import default_timer as timer
 from transform import TransformStep
 
 
@@ -78,7 +79,10 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         # TransformStep('Transform text'),
         ExtractQuestionsStep('Extract questions')
     ])
+    start = timer()
     pipe.run()
+    end = timer()
+    print('elapsed: {}'.format(end - start))
 
 
 if __name__ == "__main__":

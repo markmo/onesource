@@ -5,13 +5,19 @@ import json
 import logging
 from logging import Logger
 import os
-from pipeline import output_handler as oh, write_control_file, write_control_file_start_step
+from pipeline import output_handler as oh
 import sys
 import tempfile
+from timeit import default_timer as timer
 from workers import start
 
 
-def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, logger: Logger=None):
+def create_and_run_job(read_root_dir: str,
+                       write_root_dir: str,
+                       temp_dir: str,
+                       overwrite: bool,
+                       logger: Logger = None
+                       ):
     if not os.path.exists(read_root_dir):
         sys.exit("read dir '{}' not found".format(read_root_dir))
 
@@ -68,7 +74,6 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         with open(temp_path, 'w') as output_file:
             json.dump(control_data, output_file)
 
-    step_name = 'extract'
     files_processed = []
     files_output = []
 
@@ -78,12 +83,11 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         'files_output': files_output
     }
 
-    control_data = write_control_file_start_step(step_name, control_data, temp_path)
-
-    a_update = start(control_data, step_name, oh, logger)
+    start_time = timer()
+    a_update = start(control_data, temp_path, oh, logger)
+    end_time = timer()
+    print('elapsed: {}'.format(end_time - start_time))
     deep_update_(accumulator, a_update)
-
-    write_control_file(step_name, control_data, accumulator, temp_path)
 
 
 if __name__ == "__main__":
