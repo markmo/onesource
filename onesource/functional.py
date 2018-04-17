@@ -2,7 +2,7 @@ from copy import deepcopy
 from extractors import AbstractExtractor, HeadingExtractor, ListExtractor, TableExtractor, TextExtractor
 from io import BytesIO
 from lxml import etree
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, AnyStr, Dict, IO, Iterator, List, Tuple
 from utils import clean_text, deep_update_, fix_content, get_iso_datetime_from_millis
 import yaml
 
@@ -18,10 +18,10 @@ def element_iterator(stream: BytesIO,
             yield event, el
 
 
-def file_iter(file_paths: List[str]):
+def file_iter(file_paths: List[str]) -> Iterator[Tuple[IO[AnyStr], str]]:
     for path in file_paths:
         with open(path, 'rb') as file:
-            yield file
+            yield file, path
 
 
 def load_config(config_file_path: str) -> Dict[str, Any]:

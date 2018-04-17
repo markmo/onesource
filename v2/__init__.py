@@ -5,7 +5,7 @@ import json
 import logging
 from logging import Logger
 import os
-from pipeline import output_handler as oh
+from pipeline import json_output_handler as oh
 import sys
 import tempfile
 from timeit import default_timer as timer
@@ -96,7 +96,9 @@ if __name__ == "__main__":
     parser.add_argument('--read', dest='read_root_dir', help='read root dir')
     parser.add_argument('--write', dest='write_root_dir', help='write root dir')
     parser.add_argument('--temp', dest='temp_dir', help='temp dir', default=tempfile.gettempdir())
-    parser.add_argument('--overwrite', dest='overwrite', type=bool, help='overwrite any processed files', default=False)
+    parser.add_argument('--overwrite', dest='overwrite', help='overwrite any processed files', action='store_true')
+    parser.add_argument('--no-overwrite', dest='overwrite', help='overwrite any processed files', action='store_false')
+    parser.set_defaults(overwrite=False)
     args = parser.parse_args()
 
     create_and_run_job(args.read_root_dir, args.write_root_dir, args.temp_dir, args.overwrite)

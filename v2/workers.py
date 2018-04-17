@@ -5,7 +5,7 @@ from io import BytesIO
 import json
 from logging import Logger
 import os
-from pipeline import get_temp_path, write_control_file_start_step
+from pipeline import get_temp_path, write_control_file_start
 import ray
 from typing import Any, Callable, Dict, List
 
@@ -99,7 +99,7 @@ def start(control_data: Dict[str, Any],
     steps_initialized = {}
     remaining_ids = []
     file_paths = [x['path'] for x in control_data['files']]
-    for file in file_iter(file_paths):
+    for file, _ in file_iter(file_paths):
         # logger.debug('process file: {}'.format(file.name))
         extract_id = extract_file.remote(file.name, file.read(),
                                          excluded_xml_tags_id, excluded_html_tags_id,
@@ -121,7 +121,7 @@ def start(control_data: Dict[str, Any],
             output_filename = '{}_{}.json'.format(step, record_id)
             output_path = os.path.join(write_root_dir, output_filename)
             if step not in steps_initialized:
-                control_data = write_control_file_start_step(step, control_data, temp_path)
+                control_data = write_control_file_start(step, control_data, temp_path)
                 steps_initialized[step] = True
 
             if step == STEP_EXTRACT:

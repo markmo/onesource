@@ -8,6 +8,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="emnlp2017-relation-extraction" />
   </component>
   <component name="PackageRequirementsSettings">
     <option name="requirementsPath" value="" />

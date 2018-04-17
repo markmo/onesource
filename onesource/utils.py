@@ -1,11 +1,12 @@
 from copy import copy, deepcopy
 from datetime import datetime
+import itertools
 import re
 import sys
 from typing import Callable
 
 
-def clean_text(text: str):
+def clean_text(text: str) -> str:
     """
     Remove non-ascii chars and extra whitespace.
 
@@ -27,7 +28,7 @@ def clean_text(text: str):
     return t
 
 
-def convert_name_to_underscore(name: str):
+def convert_name_to_underscore(name: str) -> str:
     """
     Convert name e.g. 'Extract Step 1' to underscore format e.g. 'extract_step_1'.
 
@@ -39,7 +40,7 @@ def convert_name_to_underscore(name: str):
     return t.lower()
 
 
-def deep_update_(target, src, append_to_lists=False):
+def deep_update_(target, src, append_to_lists=False) -> None:
     for k, v in src.items():
         if type(v) == list:
             if k in target:
@@ -70,7 +71,7 @@ end_tag_re = re.compile(r'>\s*$')
 variable_re = re.compile('^{[\w.]*}$')
 
 
-def fix_content(content: str):
+def fix_content(content: str) -> str:
     """
     Wrap text in HTML tags if not already.
 
@@ -86,7 +87,11 @@ def fix_content(content: str):
         return content
 
 
-def get_iso_datetime_from_millis(millis: int):
+def flatten(lst):
+    return list(itertools.chain.from_iterable(lst))
+
+
+def get_iso_datetime_from_millis(millis: int) -> str:
     """
     Convert milliseconds since epoch to ISO formatted datetime
     e.g. '2018-03-10T09:54:49.943163'
@@ -95,6 +100,14 @@ def get_iso_datetime_from_millis(millis: int):
     :return: datetime
     """
     return datetime.utcfromtimestamp(millis//1000).isoformat()
+
+
+def is_variable(text: str) -> bool:
+    return variable_re.match(text) is not None
+
+
+def strip_link_markers(text: str) -> str:
+    return re.sub(r'(\[\[|]])', '', text)
 
 
 class Accumulator(dict):
@@ -275,3 +288,19 @@ def tailrec(fn: Callable):
 
     func.__doc__ = fn.__doc__
     return func
+
+
+class MakeIter(object):
+
+    def __init__(self, generator, *args, **kwargs):
+        self.generator = generator
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        return self
+
+    def __iter__(self):
+        return self.generator(*self.args, **self.kwargs)

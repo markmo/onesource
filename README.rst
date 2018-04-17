@@ -33,7 +33,7 @@ data layout. This allows us to compute offsets into the serialized blob without 
 the entire blob. In practice, this can translate into deserialization that is several orders
 of magnitude faster.
 
-``v2`` is in development.
+v2 is in development.
 
 To run v1, call ``onesource/__init__.py`` with the following arguments::
 
@@ -41,6 +41,9 @@ To run v1, call ``onesource/__init__.py`` with the following arguments::
     --write (write root dir)
     --temp (temp dir for control files)
     --overwrite (overwrite existing files)
+    --no-overwrite (do not overwrite existing files)
+
+To run v2, call ``v2/__init__.py`` with the same arguments as above.
 
 There is a startup penalty with v2, but outperforms with scale. v2 is using pure functions.
 An hypothesis is that given document parsing is stateful, which is requiring incremental
@@ -58,5 +61,9 @@ with a hybrid approach - parallel tasks using mutable data structures within eac
   - Sequential pipeline (v1) performance - elapsed: 1.1118s
 
   - Parallel workers (v2) performance - elapsed: 0.9113s
+
+For extract_relations step, start Core NLP Server from the corenlp root:
+
+    java -mx4g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer -port 9000 -timeout 15000
 
 .. _Ray: https://github.com/ray-project/ray

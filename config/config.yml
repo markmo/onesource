@@ -1,3 +1,20 @@
+doc_types_with_text:
+  - CHANNEL_WEBFORMS
+  - CHANNEL_RULES
+  - CHANNEL_CONTACTS
+  - CHANNEL_WEB_APPS
+  - CHANNEL_MESSAGES
+  - CHANNEL_HELP
+  - CHANNEL_NEWS
+  - CHANNEL_PROMPT
+  - CHANNEL_PRICING
+  - CHANNEL_OFFERS
+  - CHANNEL_COMMUNICATIONS
+  - CHANNEL_ANSWERFLOW_STEPS
+  - CHANNEL_OVERVIEW
+  - CHANNEL_SUPPORT
+  - CHANNEL_PRODUCTS
+  - CHANNEL_PROCESS
 doc_types:
   CHANNEL_ALERTS:
     text_props:
@@ -7,21 +24,42 @@ doc_types:
     text_props:
       - webform_title
       - webform_description
+      - webform_url
+    question_templates:
+      -
+        q: "What is the web location of the {webform_title}?"
+        a: "{webform_url}"
+      -
+        q: "What is the {webform_title}?"
+        a: "{webform_description}"
   CHANNEL_RULES:
     text_props:
       - rules_title
-      - rules_desciption
+      - rules_desciption #sic
   CHANNEL_CONTACTS:
     text_props:
       - title_of_contact
       - description_of_group
+    question_templates:
+      -
+        q: "Who is the contact for {title_of_contact}?"
+        a: "{description_of_group}"
   CHANNEL_BANNERS:
     text_props:
       - banner_title
+      - banner_image
   CHANNEL_WEB_APPS:
     text_props:
       - web_app_name
+      - web_app_description
       - web_app_url
+    question_templates:
+      -
+        q: "What is the web location of the {web_app_name}?"
+        a: "{web_app_url}"
+      -
+        q: "What is the {web_app_name}?"
+        a: "{web_app_description}"
   CHANNEL_MESSAGES:
     text_props:
       - important_msg
@@ -29,10 +67,16 @@ doc_types:
   CHANNEL_DEVICES:
     text_props:
       - title
+      - summary
+      - specifications
   CHANNEL_HELP:
     text_props:
       - help_title
       - help_description
+    question_templates:
+      -
+        q: "{help_title}"
+        a: "{help_description}"
   CHANNEL_NEWS:
     text_props:
       - news_title
@@ -67,7 +111,12 @@ doc_types:
     text_props:
       - overview_title
       - what_is_it_description
+      - can_i_have_it_description
       - why_do_i_want_it_description
+    question_templates:
+      -
+        q: "{overview_title}"
+        a: "{what_is_it_description}"
   CHANNEL_SUPPORT:
     text_props:
       - support_title
@@ -88,3 +137,8 @@ doc_types:
     text_props:
       - process_title
       - process_description
+      - profiled_content
+    question_templates:
+      -
+        q: "How to {process_title}?"
+        a: "{process_description}"

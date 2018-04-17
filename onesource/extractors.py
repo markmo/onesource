@@ -1,5 +1,26 @@
+from tableschema import config, Schema, types
 from typing import Any, Dict, List
-from utils import clean_text
+from utils import clean_text, strip_link_markers
+
+LINK_OPEN_MARKER = '[['
+
+LINK_CLOSE_MARKER = ']]'
+
+_INFER_TYPE_ORDER = [
+    'duration',
+    'geojson',
+    'geopoint',
+    'object',
+    'array',
+    'datetime',
+    'time',
+    'date',
+    'integer',
+    'number',
+    'boolean',
+    'string',
+    'any',
+]
 
 
 class AbstractExtractor(object):
@@ -33,8 +54,11 @@ class HeadingExtractor(AbstractExtractor):
         """
         self.__current_text = ''
         self.__excluded_stack_count = 0
-        self.__excluded_tags = excluded_tags or ['ul', 'ol', 'table']
+        self.__excluded_tags = ['ul', 'ol', 'table'] if excluded_tags is None else excluded_tags
         self.__is_heading = False
+        self.__is_anchor = False
+        self.__anchor_text = ''
+        self.__anchor_url = None
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
         if el.tag in self.__excluded_tags:
@@ -57,15 +81,38 @@ class HeadingExtractor(AbstractExtractor):
                         c = clean_text(self.__current_text)
                         self.__current_text = ''
                         if c:
-                            text_list.append(c)
+                            text_list.append(strip_link_markers(c))
                             structured_content.append({'type': 'heading', 'text': c})
 
             elif self.__is_heading:
+                if el.tag == 'a':
+                    if ev == 'start':
+                        self.__is_anchor = True
+                        self.__current_text += LINK_OPEN_MARKER
+                        self.__anchor_url = el.get('href')
+
+                    elif ev == 'end':
+                        self.__is_anchor = False
+                        self.__current_text += LINK_CLOSE_MARKER
+                        if self.__anchor_url and self.__anchor_text:
+                            structured_content.append({
+                                'type': 'link',
+                                'url': self.__anchor_url,
+                                'text': self.__anchor_text
+                            })
+
+                        self.__anchor_url = None
+                        self.__anchor_text = ''
+
                 if ev == 'start' and el.text:
                     self.__current_text += el.text
+                    if self.__is_anchor:
+                        self.__anchor_text += el.text
 
                 if ev == 'end' and el.tail:
                     self.__current_text += el.tail
+                    if self.__is_anchor:
+                        self.__anchor_text += el.tail
 
     def __is_excluded(self):
         return self.__excluded_stack_count > 0
@@ -83,7 +130,10 @@ class TextExtractor(AbstractExtractor):
         """
         self.__current_text = ''
         self.__excluded_stack_count = 0
-        self.__excluded_tags = excluded_tags or ['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4']
+        self.__excluded_tags = ['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4'] if excluded_tags is None else excluded_tags
+        self.__is_anchor = False
+        self.__anchor_text = ''
+        self.__anchor_url = None
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
         if el.tag in self.__excluded_tags:
@@ -93,7 +143,7 @@ class TextExtractor(AbstractExtractor):
                     c = clean_text(self.__current_text)
                     self.__current_text = ''
                     if c:
-                        text_list.append(c)
+                        text_list.append(strip_link_markers(c))
                         structured_content.append({'type': 'text', 'text': c})
 
             elif ev == 'end':
@@ -108,7 +158,7 @@ class TextExtractor(AbstractExtractor):
                     c = clean_text(self.__current_text)
                     self.__current_text = ''
                     if c:
-                        text_list.append(c)
+                        text_list.append(strip_link_markers(c))
                         structured_content.append({'type': 'text', 'text': c})
 
                 if el.tail:
@@ -120,7 +170,7 @@ class TextExtractor(AbstractExtractor):
                         c = clean_text(self.__current_text)
                         self.__current_text = ''
                         if c:
-                            text_list.append(c)
+                            text_list.append(strip_link_markers(c))
                             structured_content.append({'type': 'text', 'text': c})
 
                     if el.text:
@@ -131,18 +181,54 @@ class TextExtractor(AbstractExtractor):
                         c = clean_text(self.__current_text)
                         self.__current_text = ''
                         if c:
-                            text_list.append(c)
+                            text_list.append(strip_link_markers(c))
                             structured_content.append({'type': 'text', 'text': c})
 
                     if el.tail:
                         self.__current_text += el.tail
 
             else:
+                if el.tag == 'a':
+                    if ev == 'start':
+                        self.__is_anchor = True
+                        self.__current_text += LINK_OPEN_MARKER
+                        self.__anchor_url = el.get('href')
+
+                    elif ev == 'end':
+                        self.__is_anchor = False
+                        self.__current_text += LINK_CLOSE_MARKER
+                        if self.__anchor_url and self.__anchor_text:
+                            structured_content.append({
+                                'type': 'link',
+                                'url': self.__anchor_url,
+                                'text': self.__anchor_text
+                            })
+
+                        self.__anchor_url = None
+                        self.__anchor_text = ''
+
+                elif el.tag == 'img' and ev == 'start':
+                    url = el.get('src')
+                    title = el.get('title') or el.get('alt') or url
+                    structured_content.append({
+                        'type': 'image',
+                        'url': url,
+                        'title': title
+                    })
+                    image_ref = f'{{image:{url}}}'
+                    self.__current_text += image_ref
+                    if self.__is_anchor:
+                        self.__anchor_text += image_ref
+
                 if ev == 'start' and el.text:
                     self.__current_text += el.text
+                    if self.__is_anchor:
+                        self.__anchor_text += el.text
 
                 elif ev == 'end' and el.tail:
                     self.__current_text += el.tail
+                    if self.__is_anchor:
+                        self.__anchor_text += el.tail
 
     def __is_excluded(self):
         return self.__excluded_stack_count > 0
@@ -156,7 +242,7 @@ class ListExtractor(AbstractExtractor):
     __heading_tags = ['h1', 'h2', 'h3', 'h4', 'div', 'strong']
 
     def __init__(self, excluded_tags: List[str]=None):
-        self.__excluded_tags = excluded_tags or ['table']
+        self.__excluded_tags = ['table'] if excluded_tags is None else excluded_tags
         self.__excluded_stack_count = 0
         self.__current_text = ''
         self.__heading_text = ''
@@ -164,6 +250,9 @@ class ListExtractor(AbstractExtractor):
         self.__is_items = False
         self.__is_list = False
         self.__list_content = {'type': 'list', 'items': []}
+        self.__is_anchor = False
+        self.__anchor_text = ''
+        self.__anchor_url = None
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
         if el.tag in self.__excluded_tags:
@@ -182,7 +271,7 @@ class ListExtractor(AbstractExtractor):
                     if self.__current_text:
                         c = clean_text(self.__current_text)
                         if c:
-                            text_list.append(c)
+                            text_list.append(strip_link_markers(c))
                             if self.__is_heading:
                                 self.__heading_text += self.__current_text
                             else:
@@ -191,7 +280,9 @@ class ListExtractor(AbstractExtractor):
                     if self.__heading_text:
                         self.__list_content['heading'] = clean_text(self.__heading_text)
 
-                    structured_content.append(self.__list_content)
+                    if self.__heading_text or self.__list_content['items']:
+                        structured_content.append(self.__list_content)
+
                     self.__list_content = {'type': 'list', 'items': []}
                     self.__is_items = False
                     self.__is_heading = False
@@ -208,7 +299,7 @@ class ListExtractor(AbstractExtractor):
                         if self.__current_text:
                             c = clean_text(self.__current_text)
                             if c:
-                                text_list.append(c)
+                                text_list.append(strip_link_markers(c))
                                 if self.__is_heading:
                                     self.__heading_text += self.__current_text
                                 else:
@@ -226,7 +317,7 @@ class ListExtractor(AbstractExtractor):
                             c = clean_text(self.__current_text)
                             self.__current_text = ''
                             if c:
-                                text_list.append(c)
+                                text_list.append(strip_link_markers(c))
                                 self.__list_content['items'].append(c)
 
                         if el.tail:
@@ -236,7 +327,7 @@ class ListExtractor(AbstractExtractor):
                     if self.__current_text:
                         c = clean_text(self.__current_text)
                         if c:
-                            text_list.append(c)
+                            text_list.append(strip_link_markers(c))
                             if self.__is_heading:
                                 self.__heading_text += self.__current_text + ' '
                             else:
@@ -252,7 +343,7 @@ class ListExtractor(AbstractExtractor):
                         if self.__current_text:
                             c = clean_text(self.__current_text)
                             if c:
-                                text_list.append(c)
+                                text_list.append(strip_link_markers(c))
                                 if self.__is_heading:
                                     self.__heading_text += self.__current_text + ' '
                                 else:
@@ -267,7 +358,7 @@ class ListExtractor(AbstractExtractor):
                         if self.__current_text:
                             c = clean_text(self.__current_text)
                             if c:
-                                text_list.append(c)
+                                text_list.append(strip_link_markers(c))
                                 if self.__is_heading:
                                     self.__heading_text += self.__current_text + ' '
                                 else:
@@ -279,11 +370,34 @@ class ListExtractor(AbstractExtractor):
                             self.__current_text += el.tail
 
                 else:
+                    if el.tag == 'a':
+                        if ev == 'start':
+                            self.__is_anchor = True
+                            self.__current_text += LINK_OPEN_MARKER
+                            self.__anchor_url = el.get('href')
+
+                        elif ev == 'end':
+                            self.__is_anchor = False
+                            self.__current_text += LINK_CLOSE_MARKER
+                            if self.__anchor_url and self.__anchor_text:
+                                structured_content.append({
+                                    'type': 'link',
+                                    'url': self.__anchor_url,
+                                    'text': self.__anchor_text
+                                })
+
+                            self.__anchor_url = None
+                            self.__anchor_text = ''
+
                     if ev == 'start' and el.text:
                         self.__current_text += el.text
+                        if self.__is_anchor:
+                            self.__anchor_text += el.text
 
                     elif ev == 'end' and el.tail:
                         self.__current_text += el.tail
+                        if self.__is_anchor:
+                            self.__anchor_text += el.tail
 
     def __is_excluded(self):
         return self.__excluded_stack_count > 0
@@ -300,21 +414,69 @@ class TableExtractor(AbstractExtractor):
         self.__is_table = False
         self.__is_table_head = False
         self.__is_table_body = False
-        self.__table_content = {'type': 'table', 'head': [], 'body': []}
+        self.__table_content = None
+        self.__table_stack = []
+        self.__table_index = 1
+        self.__is_anchor = False
+        self.__anchor_text = ''
+        self.__anchor_url = None
+        self.schema = Schema()
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
         if el.tag == 'table':
             if ev == 'start':
+                if self.__is_table:
+                    ref = 'table:{}'.format(self.__table_index)
+                    self.__current_text += f'{{{ref}}} '
+                    self.__table_content.setdefault('references', []).append(ref)
+                    self.__table_stack.append((
+                        self.__current_table_row,
+                        self.__current_text,
+                        self.__is_table_head,
+                        self.__is_table_body,
+                        self.__table_content
+                    ))
+                self.__current_table_row = []
+                self.__current_text = ''
                 self.__is_table = True
+                self.__is_table_head = False
+                self.__is_table_body = False
+                self.__table_content = {'type': 'table', 'index': self.__table_index, 'head': [], 'body': []}
+                self.__table_index += 1
 
             elif ev == 'end':
-                structured_content.append(self.__table_content)
-                self.__is_table_body = False
-                self.__is_table_head = False
-                self.__is_table = False
-                self.__current_text = ''
-                self.__current_table_row = []
-                self.__table_content = {'type': 'table', 'head': [], 'body': []}
+                table = self.__table_content
+                if table['body']:
+                    if table['head']:
+                        headers = table['head']
+                        fields = self.schema.infer(table['body'], headers=headers)['fields']
+                    else:
+                        head = table['body'][0]
+                        headers = ['name%d' % (i + 1) for i in range(len(head))]
+                        fields = self.schema.infer(table['body'], headers=headers)['fields']
+                        if len(table['body']) > 1:
+                            dtypes = [field['type'] for field in fields]
+                            if any([typ != guess_type(val) for typ, val in zip(dtypes, head)]):
+                                table['head'] = [head]
+                                table['body'] = table['body'][1:]
+                                for field, name in zip(fields, head):
+                                    field['name'] = name
+
+                    table['fields'] = fields
+
+                structured_content.append(table)
+                if len(self.__table_stack):
+                    (self.__current_table_row, self.__current_text,
+                        self.__is_table_head, self.__is_table_body,
+                        self.__table_content) = self.__table_stack.pop()
+                else:
+                    self.__is_table_body = False
+                    self.__is_table_head = False
+                    self.__is_table = False
+                    self.__current_text = ''
+                    self.__current_table_row = []
+                    self.__table_content = None
+                    self.__table_index = 1
 
         elif self.__is_table:
             # noinspection SpellCheckingInspection
@@ -329,7 +491,7 @@ class TableExtractor(AbstractExtractor):
             elif el.tag == 'tr' and ev == 'end':
                 if self.__is_current_table_row_not_empty():
                     values = [v for _, v in self.__current_table_row]
-                    text_list.append(r'\t'.join(values))
+                    text_list.append(strip_link_markers(r'\t'.join(values)))
                     if not self.__is_table_head and (self.__is_table_body or not self.__is_header_row()):
                         self.__table_content['body'].append(values)
                         self.__is_table_head = False
@@ -353,13 +515,48 @@ class TableExtractor(AbstractExtractor):
 
                 self.__current_text = ''
 
+            elif el.tag == 'a':
+                if ev == 'start':
+                    self.__is_anchor = True
+                    self.__current_text += LINK_OPEN_MARKER
+                    self.__anchor_url = el.get('href')
+
+                elif ev == 'end':
+                    self.__is_anchor = False
+                    self.__current_text += LINK_CLOSE_MARKER
+                    if self.__anchor_url and self.__anchor_text:
+                        structured_content.append({
+                            'type': 'link',
+                            'url': self.__anchor_url,
+                            'text': self.__anchor_text
+                        })
+
+                    self.__anchor_url = None
+                    self.__anchor_text = ''
+
             if ev == 'start' and el.text:
                 self.__current_text += el.text
+                if self.__is_anchor:
+                    self.__anchor_text += el.text
+
             elif ev == 'end' and el.tail:
                 self.__current_text += el.tail
+                if self.__is_anchor:
+                    self.__anchor_text += el.tail
 
     def __is_current_table_row_not_empty(self) -> bool:
         return any(v for _, v in self.__current_table_row)
 
     def __is_header_row(self) -> bool:
         return all(k == 'th' for k, _ in self.__current_table_row)
+
+
+def guess_type(value):
+    """
+    Guess the type for a value
+    """
+    for name in _INFER_TYPE_ORDER:
+        cast = getattr(types, 'cast_%s' % name)
+        result = cast('default', value)
+        if result != config.ERROR:
+            return name

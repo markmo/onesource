@@ -2,6 +2,8 @@ from extract import ExtractStep
 from io import BytesIO
 from mock import Mock
 from pipeline import Pipeline
+from typing import Any, AnyStr, Callable, Dict, IO, Iterator, List
+from utils import MakeIter
 
 # noinspection SpellCheckingInspection
 CONTROL_DATA = {
@@ -30,7 +32,7 @@ class FakeFile(BytesIO):
 
 
 # noinspection PyUnusedLocal
-def mock_file_iter(file_paths):
+def mock_file_gen(file_paths):
     # HTML must be wrapped in a CDATA section otherwise treated as XML
     # noinspection SpellCheckingInspection
     file = FakeFile(b"""
@@ -60,14 +62,16 @@ def mock_file_iter(file_paths):
         </CHANNEL_ANSWERFLOW_STEPS>
     </CONTENT>
     """)
-    yield file
+    yield file, ''
 
 
 def test_extract():
+    source_iter: Callable[[List[str]], Iterator[IO[AnyStr]]] = lambda file_paths: MakeIter(mock_file_gen)(file_paths)
     mock_output_handler = Mock()
+    output_handler: Callable[[str, Dict[str, Any]], None] = mock_output_handler
     pipeline = Pipeline(CONTROL_DATA)
     pipeline.add_steps([
-        ExtractStep('Extract text', 'files', source_iter=mock_file_iter, output_handler=mock_output_handler)
+        ExtractStep('Extract text', 'files', source_iter=source_iter, output_handler=output_handler)
     ])
     pipeline.run()
     call_args = mock_output_handler.call_args[0]
