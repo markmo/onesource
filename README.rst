@@ -64,6 +64,8 @@ with a hybrid approach - parallel tasks using mutable data structures within eac
 
 For extract_relations step, start Core NLP Server from the corenlp root:
 
+::
+
     java -mx4g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer -port 9000 -timeout 15000
 
 .. _Ray: https://github.com/ray-project/ray

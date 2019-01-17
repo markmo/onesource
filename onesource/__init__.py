@@ -5,15 +5,21 @@ from datetime import datetime
 from extract import ExtractStep
 from extract_questions import ExtractQuestionsStep
 from extract_relations import ExtractRelationsStep
+from identify_questions import IdentifyQuestionsStep
+from identify_questions_naive import IdentifyQuestionsNaiveStep
 import json
 import logging
 from logging import Logger
 import os
-from pipeline import Parallel, Pipeline
+from pipeline import HIDDEN_FILE_PREFIXES, Parallel, Pipeline
+from prep_for_dr_qa import PrepForDrQAStep
 import sys
 import tempfile
+from tika_extract import TikaExtractStep
 from timeit import default_timer as timer
 from transform import TransformStep
+from write_to_database import WriteToDatabaseStep
+from write_to_neo4j import WriteToNeo4JStep
 
 
 def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, logger: Logger=None):
@@ -40,15 +46,16 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
     now = datetime.utcnow().isoformat()
     for root, _, fs in sorted(os.walk(read_root_dir)):
         for filename in fs:
-            file_path = os.path.join(root, filename)
-            abspath = os.path.abspath(file_path)
-            paths.append(abspath)
-            files.append({
-                'filename': filename,
-                'path': abspath,
-                'time': now,
-                'status': 'started'
-            })
+            if not filename.startswith(HIDDEN_FILE_PREFIXES):
+                file_path = os.path.join(root, filename)
+                abspath = os.path.abspath(file_path)
+                paths.append(abspath)
+                files.append({
+                    'filename': filename,
+                    'path': abspath,
+                    'time': now,
+                    'status': 'started'
+                })
 
     control_filename = os.path.abspath(read_root_dir).replace('/', '-')[1:]
     temp_path = os.path.join(temp_dir, control_filename + '.json')
@@ -79,9 +86,15 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
 
     # setup pipeline
     pipe = Pipeline(control_data, logger, temp_path, overwrite=overwrite)([
-        ExtractStep('Extract text', 'files'),
-        CollectStep('Collect text'),
-        CombineStep('Combine text')
+        TikaExtractStep('Tika extract', 'files'),
+        # ExtractStep('Extract text', 'files'),
+        # CollectStep('Collect text'),
+        # IdentifyQuestionsStep('Identify questions'),
+        # IdentifyQuestionsNaiveStep('Identify questions'),
+        # WriteToDatabaseStep('Write to database', overwrite=overwrite),
+        # WriteToNeo4JStep('Write to Neo4J', overwrite=overwrite),
+        # CombineStep('Combine text', overwrite=overwrite)
+        PrepForDrQAStep('Prepare text', overwrite=overwrite),
         # Parallel()([
         #     ExtractRelationsStep('Extract relations')
         #     ExtractQuestionsStep('Extract questions'),

@@ -10,9 +10,9 @@ from pycorenlp import StanfordCoreNLP
 from typing import Any, AnyStr, Callable, Dict, Iterator, IO, List, Tuple
 from utils import convert_name_to_underscore
 
-GLOVE_PATH = '/Users/markmo/src/DeepLearning/emnlp2017-relation-extraction/resources/glove/glove.6B.50d.txt'
+GLOVE_PATH = '/Users/d777710/src/DeepLearning/emnlp2017-relation-extraction/resources/glove/glove.6B.50d.txt'
 
-MODELS_PATH = '/Users/markmo/src/DeepLearning/emnlp2017-relation-extraction/relation_extraction/trainedmodels/'
+MODELS_PATH = '/Users/d777710/src/DeepLearning/emnlp2017-relation-extraction/relation_extraction/trainedmodels/'
 
 
 class ExtractRelationsStep(AbstractStep):
@@ -42,6 +42,7 @@ class ExtractRelationsStep(AbstractStep):
 
     def process_file(self,
                      file: IO[AnyStr],
+                     path: str,
                      control_data: Dict[str, Any],
                      logger: Logger,
                      accumulator: Dict[str, Any]
@@ -86,6 +87,7 @@ class ExtractRelationsStep(AbstractStep):
         content = {'metadata': metadata, 'data': {'graphs': graphs}}
         accumulator['files_output'].append({
             'filename': output_filename,
+            'input': path,
             'path': output_path,
             'status': 'processed',
             'time': now
@@ -95,13 +97,15 @@ class ExtractRelationsStep(AbstractStep):
     def run(self, control_data: Dict[str, Any], logger: Logger, accumulator: Dict[str, Any]) -> None:
         file_paths = [x['path'] for x in control_data[self.source_key]]
         step_name = convert_name_to_underscore(self.name)
-        processed_file_paths = []
+        processed_file_paths = {}
         if step_name in control_data:
-            processed_file_paths = [x['path'] for x in control_data[step_name]
-                                    if x['status'] == 'processed']
+            for x in control_data[step_name]:
+                if x['status'] == 'processed':
+                    processed_file_paths[x['input']] = x
 
         for file, path in self.__source_iter(file_paths):
-            if not self._overwrite and path in processed_file_paths:
+            if not self._overwrite and path in processed_file_paths.keys():
+                accumulator['files_output'].append(processed_file_paths[path])
                 continue
 
-            self.process_file(file, control_data, logger, accumulator)
+            self.process_file(file, path, control_data, logger, accumulator)

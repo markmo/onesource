@@ -47,7 +47,7 @@ class HeadingExtractor(AbstractExtractor):
     Extracts headings from HTML (H1 - H4) as structured content and plain text.
     """
 
-    def __init__(self, excluded_tags: List[str]=None):
+    def __init__(self, excluded_tags: List[str] = None):
         """
 
         :param excluded_tags: do not extract headings within these tags
@@ -69,7 +69,7 @@ class HeadingExtractor(AbstractExtractor):
                 self.__excluded_stack_count -= 1
 
         elif not self.__is_excluded():
-            if el.tag in ['h1', 'h2', 'h3', 'h4']:
+            if el.tag in ['title', 'h1', 'h2', 'h3', 'h4']:
                 if ev == 'start':
                     self.__is_heading = True
                     if el.text:
@@ -87,19 +87,25 @@ class HeadingExtractor(AbstractExtractor):
             elif self.__is_heading:
                 if el.tag == 'a':
                     if ev == 'start':
-                        self.__is_anchor = True
-                        self.__current_text += LINK_OPEN_MARKER
-                        self.__anchor_url = el.get('href')
+                        anchor_url = el.get('href')
+                        if anchor_url:
+                            self.__is_anchor = True
+                            self.__current_text += LINK_OPEN_MARKER
+                            self.__anchor_url = el.get('href')
 
-                    elif ev == 'end':
+                    elif ev == 'end' and self.__is_anchor:
                         self.__is_anchor = False
-                        self.__current_text += LINK_CLOSE_MARKER
-                        if self.__anchor_url and self.__anchor_text:
-                            structured_content.append({
-                                'type': 'link',
-                                'url': self.__anchor_url,
-                                'text': self.__anchor_text
-                            })
+                        if self.__anchor_text.strip():
+                            self.__current_text += LINK_CLOSE_MARKER
+                            if self.__anchor_url and self.__anchor_text:
+                                structured_content.append({
+                                    'type': 'link',
+                                    'url': self.__anchor_url,
+                                    'text': self.__anchor_text
+                                })
+                        else:
+                            n = self.__current_text.rfind(LINK_OPEN_MARKER)
+                            self.__current_text = self.__current_text[:n]
 
                         self.__anchor_url = None
                         self.__anchor_text = ''
@@ -123,14 +129,18 @@ class TextExtractor(AbstractExtractor):
     Extracts block text from HTML (p, div) as structured content and plain text.
     """
 
-    def __init__(self, excluded_tags: List[str]=None):
+    def __init__(self, excluded_tags: List[str] = None):
         """
 
         :param excluded_tags: do not extract text within these tags
         """
         self.__current_text = ''
         self.__excluded_stack_count = 0
-        self.__excluded_tags = ['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4'] if excluded_tags is None else excluded_tags
+        if excluded_tags is None:
+            self.__excluded_tags = ['ul', 'ol', 'table', 'title', 'h1', 'h2', 'h3', 'h4']
+        else:
+            self.__excluded_tags = excluded_tags
+
         self.__is_anchor = False
         self.__anchor_text = ''
         self.__anchor_url = None
@@ -190,19 +200,25 @@ class TextExtractor(AbstractExtractor):
             else:
                 if el.tag == 'a':
                     if ev == 'start':
-                        self.__is_anchor = True
-                        self.__current_text += LINK_OPEN_MARKER
-                        self.__anchor_url = el.get('href')
+                        anchor_url = el.get('href')
+                        if anchor_url:
+                            self.__is_anchor = True
+                            self.__current_text += LINK_OPEN_MARKER
+                            self.__anchor_url = anchor_url
 
-                    elif ev == 'end':
+                    elif ev == 'end' and self.__is_anchor:
                         self.__is_anchor = False
-                        self.__current_text += LINK_CLOSE_MARKER
-                        if self.__anchor_url and self.__anchor_text:
-                            structured_content.append({
-                                'type': 'link',
-                                'url': self.__anchor_url,
-                                'text': self.__anchor_text
-                            })
+                        if self.__anchor_text.strip():
+                            self.__current_text += LINK_CLOSE_MARKER
+                            if self.__anchor_url and self.__anchor_text:
+                                structured_content.append({
+                                    'type': 'link',
+                                    'url': self.__anchor_url,
+                                    'text': self.__anchor_text
+                                })
+                        else:
+                            n = self.__current_text.rfind(LINK_OPEN_MARKER)
+                            self.__current_text = self.__current_text[:n]
 
                         self.__anchor_url = None
                         self.__anchor_text = ''
@@ -239,9 +255,9 @@ class ListExtractor(AbstractExtractor):
     Extracts lists from HTML (ul, ol) as structured content and plain text.
     """
 
-    __heading_tags = ['h1', 'h2', 'h3', 'h4', 'div', 'strong']
+    __heading_tags = ['title', 'h1', 'h2', 'h3', 'h4', 'div', 'strong']
 
-    def __init__(self, excluded_tags: List[str]=None):
+    def __init__(self, excluded_tags: List[str] = None):
         self.__excluded_tags = ['table'] if excluded_tags is None else excluded_tags
         self.__excluded_stack_count = 0
         self.__current_text = ''
@@ -338,7 +354,7 @@ class ListExtractor(AbstractExtractor):
                     if el.tail:
                         self.__current_text += el.tail
 
-                elif el.tag in ['p', 'div', 'h1', 'h2', 'h3', 'h4']:
+                elif el.tag in ['p', 'div', 'title', 'h1', 'h2', 'h3', 'h4']:
                     if ev == 'start':
                         if self.__current_text:
                             c = clean_text(self.__current_text)
@@ -372,19 +388,25 @@ class ListExtractor(AbstractExtractor):
                 else:
                     if el.tag == 'a':
                         if ev == 'start':
-                            self.__is_anchor = True
-                            self.__current_text += LINK_OPEN_MARKER
-                            self.__anchor_url = el.get('href')
+                            anchor_url = el.get('href')
+                            if anchor_url:
+                                self.__is_anchor = True
+                                self.__current_text += LINK_OPEN_MARKER
+                                self.__anchor_url = el.get('href')
 
-                        elif ev == 'end':
+                        elif ev == 'end' and self.__is_anchor:
                             self.__is_anchor = False
-                            self.__current_text += LINK_CLOSE_MARKER
-                            if self.__anchor_url and self.__anchor_text:
-                                structured_content.append({
-                                    'type': 'link',
-                                    'url': self.__anchor_url,
-                                    'text': self.__anchor_text
-                                })
+                            if self.__anchor_text.strip():
+                                self.__current_text += LINK_CLOSE_MARKER
+                                if self.__anchor_url and self.__anchor_text:
+                                    structured_content.append({
+                                        'type': 'link',
+                                        'url': self.__anchor_url,
+                                        'text': self.__anchor_text
+                                    })
+                            else:
+                                n = self.__current_text.rfind(LINK_OPEN_MARKER)
+                                self.__current_text = self.__current_text[:n]
 
                             self.__anchor_url = None
                             self.__anchor_text = ''
@@ -517,19 +539,25 @@ class TableExtractor(AbstractExtractor):
 
             elif el.tag == 'a':
                 if ev == 'start':
-                    self.__is_anchor = True
-                    self.__current_text += LINK_OPEN_MARKER
-                    self.__anchor_url = el.get('href')
+                    anchor_url = el.get('href')
+                    if anchor_url:
+                        self.__is_anchor = True
+                        self.__current_text += LINK_OPEN_MARKER
+                        self.__anchor_url = el.get('href')
 
-                elif ev == 'end':
+                elif ev == 'end' and self.__is_anchor:
                     self.__is_anchor = False
-                    self.__current_text += LINK_CLOSE_MARKER
-                    if self.__anchor_url and self.__anchor_text:
-                        structured_content.append({
-                            'type': 'link',
-                            'url': self.__anchor_url,
-                            'text': self.__anchor_text
-                        })
+                    if self.__anchor_text.strip():
+                        self.__current_text += LINK_CLOSE_MARKER
+                        if self.__anchor_url and self.__anchor_text:
+                            structured_content.append({
+                                'type': 'link',
+                                'url': self.__anchor_url,
+                                'text': self.__anchor_text
+                            })
+                    else:
+                        n = self.__current_text.rfind(LINK_OPEN_MARKER)
+                        self.__current_text = self.__current_text[:n]
 
                     self.__anchor_url = None
                     self.__anchor_text = ''

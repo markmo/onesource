@@ -79,7 +79,7 @@ def extract_text(c: Dict[str, Any],
             text_list = []
             list_extractor = ListExtractor(excluded_tags=['table'])
             table_extractor = TableExtractor()
-            text_extractor = TextExtractor(excluded_tags=['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4'])
+            text_extractor = TextExtractor(excluded_tags=['ul', 'ol', 'table', 'title', 'h1', 'h2', 'h3', 'h4'])
             heading_extractor = HeadingExtractor(excluded_tags=['ul', 'ol', 'table'])
             stream = BytesIO(fix_content(el.text).encode('utf-8'))
 

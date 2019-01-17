@@ -116,7 +116,7 @@ class ExtractStep(AbstractStep):
                 extractors = [
                     ListExtractor(excluded_tags=['table']),
                     TableExtractor(),
-                    TextExtractor(excluded_tags=['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4']),
+                    TextExtractor(excluded_tags=['ul', 'ol', 'table', 'title', 'h1', 'h2', 'h3', 'h4']),
                     HeadingExtractor(excluded_tags=['ul', 'ol', 'table'])
                 ]
                 stream: IO[AnyStr] = BytesIO(fix_content(el.text).encode('utf-8'))
@@ -170,6 +170,7 @@ class ExtractStep(AbstractStep):
 
     def process_file(self,
                      file: IO[AnyStr],
+                     path: str,
                      control_data: Dict[str, Any],
                      logger: Logger,
                      accumulator: Dict[str, Any]
@@ -188,7 +189,7 @@ class ExtractStep(AbstractStep):
         step_name = convert_name_to_underscore(self.name)
         output_filename = '{}_{}.json'.format(step_name, record_id)
         output_path = os.path.join(write_root_dir, step_name, output_filename)
-        update_control_info_(file.name, output_filename, output_path, accumulator)
+        update_control_info_(file.name, path, output_filename, output_path, accumulator)
         self.write_output(accumulator, output_path)
         return output_path
 
@@ -199,20 +200,26 @@ class ExtractStep(AbstractStep):
     def run(self, control_data: Dict[str, Any], logger: Logger, accumulator: Dict[str, Any]) -> None:
         file_paths = [x['path'] for x in control_data[self.source_key]]
         step_name = convert_name_to_underscore(self.name)
-        processed_file_paths = []
+        processed_file_paths = {}
+        # processed_file_paths = []
         if step_name in control_data:
-            processed_file_paths = [x['path'] for x in control_data[step_name]
-                                    if x['status'] == 'processed']
+            for x in control_data[step_name]:
+                if x['status'] == 'processed':
+                    processed_file_paths[x['input']] = x
+
+            # processed_file_paths = [x['input'] for x in control_data[step_name]
+            #                         if x['status'] == 'processed']
 
         accumulator['file_count'] = 0
         for file, path in self.__source_iter(file_paths):
-            if path in processed_file_paths and not self._overwrite:
+            if path in processed_file_paths.keys() and not self._overwrite:
+                accumulator['files_output'].append(processed_file_paths[path])
                 continue
 
             if accumulator['file_count'] > self.__max_file_count:
                 break
 
-            self.process_file(file, control_data, logger, accumulator)
+            self.process_file(file, path, control_data, logger, accumulator)
             accumulator['file_count'] += 1
 
 
@@ -227,6 +234,7 @@ def process_html_element(el: etree.ElementBase,
 
 
 def update_control_info_(source_filename: str,
+                         source_path: str,
                          output_filename: str,
                          output_path: str,
                          accumulator: Dict[str, Any]
@@ -238,6 +246,7 @@ def update_control_info_(source_filename: str,
     })
     accumulator['files_output'].append({
         'filename': output_filename,
+        'input': source_path,
         'path': output_path,
         'status': 'processed',
         'time': now

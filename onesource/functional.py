@@ -165,7 +165,7 @@ def process_xml_element(el: etree.ElementBase,
         extractors = [
             ListExtractor(excluded_tags=['table']),
             TableExtractor(),
-            TextExtractor(excluded_tags=['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4']),
+            TextExtractor(excluded_tags=['ul', 'ol', 'table', 'title', 'h1', 'h2', 'h3', 'h4']),
             HeadingExtractor(excluded_tags=['ul', 'ol', 'table'])
         ]
         stream = BytesIO(fix_content(el.text).encode('utf-8'))

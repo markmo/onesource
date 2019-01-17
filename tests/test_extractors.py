@@ -375,7 +375,7 @@ def test_extract_text_with_line_break():
 def test_exclude_text_in_list():
     structured_content = []
     text_list = []
-    text_extractor = TextExtractor(excluded_tags=['ul', 'ol', 'table', 'h1', 'h2', 'h3', 'h4'])
+    text_extractor = TextExtractor(excluded_tags=['ul', 'ol', 'table', 'title', 'h1', 'h2', 'h3', 'h4'])
     content = '''
     <ul>
         <h2>List heading</h2>
@@ -1025,7 +1025,7 @@ def test_extract_heading_and_text_combo():
     structured_content = []
     text_list = []
     heading_extractor = HeadingExtractor()
-    text_extractor = TextExtractor(excluded_tags=['ul', 'ol', 'h1', 'h2', 'h3', 'h4'])
+    text_extractor = TextExtractor(excluded_tags=['ul', 'ol', 'title', 'h1', 'h2', 'h3', 'h4'])
     content = '''
     <h1>My Heading</h1>
     <div>
