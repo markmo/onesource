@@ -11,14 +11,18 @@ import psycopg2
 from py2neo import Database, Graph
 from py2neo.data import Node, Relationship
 from py2neo.ogm import GraphObject, Property
+import settings
 import tempfile
 import traceback
 from typing import Any, AnyStr, Dict, IO, Iterator, List, Tuple
 from utils import convert_name_to_underscore
 import uuid
 
-DB_NAME = 'postgres'
-DB_USER = 'd777710'
+DB_NAME = os.getenv('POSTGRES_DBNAME')
+DB_USER = os.getenv('POSTGRES_USER')
+NEO4J_HOST = os.getenv('NEO4J_HOST')
+NEO4J_USER = os.getenv('NEO4J_USER')
+NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
 HIDDEN_FILE_PREFIXES = ('~', '.')
 
 
@@ -532,7 +536,7 @@ def neo4j_output_handler(output_path: str, content: Dict[str, Any], overwrite: b
     :param overwrite: (bool) overwrite file contents if true otherwise append to file
     :return:
     """
-    graph = Graph('bolt://localhost:7687', auth=('neo4j', 'password'))
+    graph = Graph(NEO4J_HOST, auth=(NEO4J_USER, NEO4J_PASSWORD))
     data = content['structured_content']
     prev_item = None
     prev_heading = None
