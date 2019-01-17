@@ -105,7 +105,7 @@ class HeadingExtractor(AbstractExtractor):
                                 })
                         else:
                             n = self.__current_text.rfind(LINK_OPEN_MARKER)
-                            self.__current_text = self.__current_text[:n]
+                            self.__current_text = self.__current_text[:n] + ' '
 
                         self.__anchor_url = None
                         self.__anchor_text = ''
@@ -218,7 +218,7 @@ class TextExtractor(AbstractExtractor):
                                 })
                         else:
                             n = self.__current_text.rfind(LINK_OPEN_MARKER)
-                            self.__current_text = self.__current_text[:n]
+                            self.__current_text = self.__current_text[:n] + ' '
 
                         self.__anchor_url = None
                         self.__anchor_text = ''
@@ -406,7 +406,7 @@ class ListExtractor(AbstractExtractor):
                                     })
                             else:
                                 n = self.__current_text.rfind(LINK_OPEN_MARKER)
-                                self.__current_text = self.__current_text[:n]
+                                self.__current_text = self.__current_text[:n] + ' '
 
                             self.__anchor_url = None
                             self.__anchor_text = ''
@@ -557,7 +557,7 @@ class TableExtractor(AbstractExtractor):
                             })
                     else:
                         n = self.__current_text.rfind(LINK_OPEN_MARKER)
-                        self.__current_text = self.__current_text[:n]
+                        self.__current_text = self.__current_text[:n] + ' '
 
                     self.__anchor_url = None
                     self.__anchor_text = ''

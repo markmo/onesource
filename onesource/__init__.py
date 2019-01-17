@@ -3,6 +3,7 @@ from collect import CollectStep
 from combine import CombineStep
 from datetime import datetime
 from extract import ExtractStep
+from extract_entities import ExtractEntitiesStep
 from extract_questions import ExtractQuestionsStep
 from extract_relations import ExtractRelationsStep
 from identify_questions import IdentifyQuestionsStep
@@ -94,7 +95,8 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         # WriteToDatabaseStep('Write to database', overwrite=overwrite),
         # WriteToNeo4JStep('Write to Neo4J', overwrite=overwrite),
         # CombineStep('Combine text', overwrite=overwrite)
-        PrepForDrQAStep('Prepare text', overwrite=overwrite),
+        # PrepForDrQAStep('Prepare text', overwrite=overwrite),
+        ExtractEntitiesStep('Extract entities', overwrite=overwrite)
         # Parallel()([
         #     ExtractRelationsStep('Extract relations')
         #     ExtractQuestionsStep('Extract questions'),
