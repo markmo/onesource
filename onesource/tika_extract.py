@@ -6,6 +6,7 @@ from lxml import etree
 import lxml.html
 import os
 from pipeline import AbstractStep, file_iter, HIDDEN_FILE_PREFIXES, json_output_handler as oh
+import spacy
 from tika import parser
 from typing import Any, AnyStr, Callable, Dict, IO, Iterator, List, Tuple
 from utils import convert_name_to_underscore, fix_content, flatten
@@ -23,7 +24,8 @@ class TikaExtractStep(AbstractStep):
                  source_iter: Callable[[List[str]], Iterator[IO[AnyStr]]] = file_iter,
                  output_handler: Callable[[str, Dict[str, Any]], None] = oh,
                  excluded_tags: List[str] = None,
-                 max_file_count: int = 100000):
+                 max_file_count: int = 100000,
+                 delete: bool = False):
         """
 
         :param name: human-readable name of step
@@ -34,11 +36,12 @@ class TikaExtractStep(AbstractStep):
         :param excluded_tags: do not extract from these tags
         :param max_file_count: maximum number of files to process
         """
-        super().__init__(name, source_key, overwrite)
+        super().__init__(name, source_key, overwrite, delete)
         self.__source_iter = source_iter
         self.__output_handler = output_handler
         self.__excluded_tags = excluded_tags or ['GUID']
         self.__max_file_count = max_file_count
+        self.__nlp = spacy.load('en_core_web_sm')
 
     def element_iterator(self,
                          stream: IO[AnyStr],
@@ -61,7 +64,7 @@ class TikaExtractStep(AbstractStep):
         ]
         stream: IO[AnyStr] = BytesIO(fix_content(text).encode('utf-8'))
         for ev, elem in self.element_iterator(stream, html=True):
-            process_html_element(elem, ev, extractors, structured_content, text_list)
+            process_html_element(elem, ev, extractors, structured_content, text_list, self.__nlp)
 
         # re-extract content in single column tables used for layout purposes only
         html = None  # memoize
@@ -90,7 +93,7 @@ class TikaExtractStep(AbstractStep):
                     sc = []
                     tl = []
                     for evt, ele in etree.iterwalk(root, events=('start', 'end')):
-                        process_html_element(ele, evt, extractors, sc, tl)
+                        process_html_element(ele, evt, extractors, sc, tl, self.__nlp)
 
                     j = len(c.get('references', []))
                     structured_content = flatten([structured_content[:(i - j)], sc,
@@ -130,8 +133,8 @@ class TikaExtractStep(AbstractStep):
         record_id = metadata['dc:title'].replace(' ', '_')
         created_date = metadata['dcterms:created'][0]
         last_mod_date = metadata['dcterms:modified'][0]
-        author = metadata['meta:last-author']
-        word_count = int(metadata['meta:word-count'])
+        author = metadata.get('meta:last-author', '')
+        word_count = int(metadata.get('meta:word-count', '-1'))
         accumulator.update({
             'data': {},
             'is_data': False,
@@ -182,6 +185,9 @@ class TikaExtractStep(AbstractStep):
                     break
 
                 self.process_file(file, path, control_data, logger, accumulator)
+                if self._delete:
+                    os.remove(path)
+
                 accumulator['file_count'] += 1
 
 
@@ -189,10 +195,11 @@ def process_html_element(el: etree.ElementBase,
                          event: str,
                          extractors: List[AbstractExtractor],
                          structured_content: List[Dict[str, Any]],
-                         text_list: List[str]
+                         text_list: List[str],
+                         nlp
                          ) -> None:
     for extractor in extractors:
-        extractor.extract(el, event, structured_content, text_list)
+        extractor.extract(el, event, structured_content, text_list, nlp)
 
 
 def update_control_info_(source_filename: str,

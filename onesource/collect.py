@@ -77,7 +77,7 @@ class CollectStep(AbstractStep):
                     processed_file_paths[x['input']] = x
 
         for file, path in self.__source_iter(file_paths):
-            if not self._overwrite and path in processed_file_paths.keys():
+            if not self._overwrite and path in processed_file_paths:
                 accumulator['files_output'].append(processed_file_paths[path])
                 continue
 

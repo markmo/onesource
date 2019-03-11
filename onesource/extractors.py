@@ -30,13 +30,14 @@ class AbstractExtractor(object):
     Extractors are stateful, so must be used per file.
     """
 
-    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
+    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         """
 
         :param el: the current HTML element being processed
         :param ev: the type of event ['start', 'end']
         :param structured_content: a list to append structured content
         :param text_list: a list to append plain text
+        :param nlp Spacy model
         :return: None
         """
         raise NotImplementedError
@@ -60,7 +61,7 @@ class HeadingExtractor(AbstractExtractor):
         self.__anchor_text = ''
         self.__anchor_url = None
 
-    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
+    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         if el.tag in self.__excluded_tags:
             if ev == 'start':
                 self.__excluded_stack_count += 1
@@ -144,8 +145,9 @@ class TextExtractor(AbstractExtractor):
         self.__is_anchor = False
         self.__anchor_text = ''
         self.__anchor_url = None
+        self.__text_continues = False
 
-    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
+    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         if el.tag in self.__excluded_tags:
             if ev == 'start':
                 self.__excluded_stack_count += 1
@@ -153,8 +155,30 @@ class TextExtractor(AbstractExtractor):
                     c = clean_text(self.__current_text)
                     self.__current_text = ''
                     if c:
-                        text_list.append(strip_link_markers(c))
-                        structured_content.append({'type': 'text', 'text': c})
+                        # if c[0].isupper():
+                        #     self.__text_continues = False
+
+                        doc = nlp(c)
+                        s = ''
+                        for i, sent in enumerate(doc.sents):
+                            if i > 0:
+                                self.__text_continues = False
+
+                            s = sent.text
+                            if self.__text_continues:
+                                text_list[-1] += ' ' + strip_link_markers(s)
+                                structured_content[-1]['text'] += ' ' + s
+                            else:
+                                text_list.append(strip_link_markers(s))
+                                if detect_heading(s, nlp):
+                                    structured_content.append({'type': 'heading', 'text': s})
+                                else:
+                                    structured_content.append({'type': 'text', 'text': s})
+
+                        if not s.endswith(('.', '?', '!')):
+                            self.__text_continues = True
+                        else:
+                            self.__text_continues = False
 
             elif ev == 'end':
                 self.__excluded_stack_count -= 1
@@ -168,8 +192,30 @@ class TextExtractor(AbstractExtractor):
                     c = clean_text(self.__current_text)
                     self.__current_text = ''
                     if c:
-                        text_list.append(strip_link_markers(c))
-                        structured_content.append({'type': 'text', 'text': c})
+                        # if c[0].isupper():
+                        #     self.__text_continues = False
+
+                        doc = nlp(c)
+                        s = ''
+                        for i, sent in enumerate(doc.sents):
+                            if i > 0:
+                                self.__text_continues = False
+
+                            s = sent.text
+                            if self.__text_continues:
+                                text_list[-1] += ' ' + strip_link_markers(s)
+                                structured_content[-1]['text'] += ' ' + s
+                            else:
+                                text_list.append(strip_link_markers(s))
+                                if detect_heading(s, nlp):
+                                    structured_content.append({'type': 'heading', 'text': s})
+                                else:
+                                    structured_content.append({'type': 'text', 'text': s})
+
+                        if not s.endswith(('.', '?', '!')):
+                            self.__text_continues = True
+                        else:
+                            self.__text_continues = False
 
                 if el.tail:
                     self.__current_text += el.tail
@@ -180,8 +226,30 @@ class TextExtractor(AbstractExtractor):
                         c = clean_text(self.__current_text)
                         self.__current_text = ''
                         if c:
-                            text_list.append(strip_link_markers(c))
-                            structured_content.append({'type': 'text', 'text': c})
+                            # if c[0].isupper():
+                            #     self.__text_continues = False
+
+                            doc = nlp(c)
+                            s = ''
+                            for i, sent in enumerate(doc.sents):
+                                if i > 0:
+                                    self.__text_continues = False
+
+                                s = sent.text
+                                if self.__text_continues:
+                                    text_list[-1] += ' ' + strip_link_markers(s)
+                                    structured_content[-1]['text'] += ' ' + s
+                                else:
+                                    text_list.append(strip_link_markers(s))
+                                    if detect_heading(s, nlp):
+                                        structured_content.append({'type': 'heading', 'text': s})
+                                    else:
+                                        structured_content.append({'type': 'text', 'text': s})
+
+                            if not s.endswith(('.', '?', '!')):
+                                self.__text_continues = True
+                            else:
+                                self.__text_continues = False
 
                     if el.text:
                         self.__current_text += el.text
@@ -191,8 +259,30 @@ class TextExtractor(AbstractExtractor):
                         c = clean_text(self.__current_text)
                         self.__current_text = ''
                         if c:
-                            text_list.append(strip_link_markers(c))
-                            structured_content.append({'type': 'text', 'text': c})
+                            # if c[0].isupper():
+                            #     self.__text_continues = False
+
+                            doc = nlp(c)
+                            s = ''
+                            for i, sent in enumerate(doc.sents):
+                                if i > 0:
+                                    self.__text_continues = False
+
+                                s = sent.text
+                                if self.__text_continues:
+                                    text_list[-1] += ' ' + strip_link_markers(s)
+                                    structured_content[-1]['text'] += ' ' + s
+                                else:
+                                    text_list.append(strip_link_markers(s))
+                                    if detect_heading(s, nlp):
+                                        structured_content.append({'type': 'heading', 'text': s})
+                                    else:
+                                        structured_content.append({'type': 'text', 'text': s})
+
+                            if not s.endswith(('.', '?', '!')):
+                                self.__text_continues = True
+                            else:
+                                self.__text_continues = False
 
                     if el.tail:
                         self.__current_text += el.tail
@@ -270,7 +360,7 @@ class ListExtractor(AbstractExtractor):
         self.__anchor_text = ''
         self.__anchor_url = None
 
-    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
+    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         if el.tag in self.__excluded_tags:
             if ev == 'start':
                 self.__excluded_stack_count += 1
@@ -444,7 +534,7 @@ class TableExtractor(AbstractExtractor):
         self.__anchor_url = None
         self.schema = Schema()
 
-    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str]):
+    def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         if el.tag == 'table':
             if ev == 'start':
                 if self.__is_table:
@@ -588,3 +678,12 @@ def guess_type(value):
         result = cast('default', value)
         if result != config.ERROR:
             return name
+
+
+def detect_heading(text, nlp):
+    doc = nlp(text)
+    for token in doc:
+        if not (token.is_stop or token.is_title or token.is_upper or token.is_digit or token.is_punc):
+            return False
+
+    return True

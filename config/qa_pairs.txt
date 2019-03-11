@@ -1,0 +1,41 @@
+Configure	Netgear v7610	Which methods to configure the Netgear v7610?	The Netgear v7610 can be configured using two methods from the UI: either via the Initial Setup Wizard or by Manual Setup.	When is the Initial Setup Wizard shown?	The Initial Setup Wizard is shown when the UI is first opened after a fresh install or after a factory reset. If it has been previously configured, you will be presented with the login screen.
+Install	Netgear v7610	What is the setup procedure?	[Netgear v7610 Setup Procedure]	What is the IP Address of the UI?	192.168.15.1
+Configure	Netgear v7610, Wi-Fi, 802.11 AC	Does the Netgear v7610 have 802.11 AC?	Yes
+Configure	Netgear v7610, Wi-Fi, 802.11 B	Is the Netgear v7610 compatible with 802.11 B?	Yes
+Configure	Netgear v7610, Wi-Fi, 802.11 G	Is the Netgear v7610 compatible with 802.11 G?	Yes
+Configure	Netgear v7610, Wi-Fi, 802.11 N	Is the Netgear v7610 compatible with 802.11 N?	Yes
+Configure	Netgear v7610, Wi-Fi, 802.11 B/G/N	Is the Netgear v7610 compatible with 802.11 B/G/N?	Yes
+Configure	Netgear v7610, Wi-Fi, Antenna	How many Wi-Fi Antennas does the Netgear v7610 have?	4 x 4
+Configure	Netgear v7610, WPA	Is the Netgear v7610 compatible with WPA?	Yes
+Configure	Netgear v7610, WPA2	Is the Netgear v7610 compatible with WPA2?	Yes
+Configure	Netgear v7610, WPS	Does the Netgear v7610 have WPS?	Yes
+Configure	Netgear v7610, DSL, ADSL, ADSL2, ADSL2+, Annex A, Annex M	How many DSL ports does the Netgear v7610 have WPS?	1	Does the Netgear v7610 support ADSL?	Yes	Does the Netgear v7610 support ADSL2?	Yes	Does the Netgear v7610 support ADSL2+?	Yes	Does the Netgear v7610 support Annex A?	Yes	Does the Netgear v7610 support Annex M?	Yes
+Configure	Netgear v7610, FXO, PSTN, Voice Call	How many FXO ports does the Netgear v7610 have WPS?	1	Does the Netgear v7610 support PSTN?	Yes	Does the Netgear v7610 support Voice Calling?	Yes
+Configure	Netgear v7610, LAN	How many LAN ports does the Netgear v7610 have?	4
+Configure	Netgear v7610, WAN	How many WAN ports does the Netgear v7610 have?	1
+Configure	Netgear v7610, USB 3.0	How many USB 3.0 ports does the Netgear v7610 have?	2	Does the Netgear v7610 have USB 3.0?	Yes	Where is the USB 3.0 port?	Rear panel and side panel.	What is the total number of Amps available on the two USB 3.0 ports?	1.5
+Configure	Netgear v7610, NTFS	Does the Netgear v7610 support NTFS?	Yes
+Configure	Netgear v7610, FAT32	Does the Netgear v7610 support FAT32?	Yes
+Configure	Netgear v7610, DLNA	Does the Netgear v7610 have DLNA?	Yes
+Configure	Netgear v7610, TV	Does the Netgear v7610 connect to a TV?	Yes
+Configure	Netgear v7610, Digital Camera	Does the Netgear v7610 connect to a Digital Camera?	Yes
+Configure	Netgear v7610, Multimedia	Can the Netgear v7610 share Multimedia?	Yes
+Configure	Netgear v7610, UPNP	Does the Netgear v7610 support UPNP?	Yes
+Configure	Netgear v7610, PS3	Does the Netgear v7610 support PS3?	Yes
+Configure	Netgear v7610, Xbox	Does the Netgear v7610 support Xbox?	Yes
+Configure	Netgear v7610, IPv6	Does the Netgear v7610 support IPv6?	Yes
+Configure	Netgear v7610, Power Pack	How many Volts does the Power Pack use?	12
+Configure	Netgear v7610, Power Pack	How many Amps does the Power Pack use?	2.5
+Configure	Netgear v7610, VPN	Does the Netgear v7610? 3 support VPN?	Yes
+Configure	Netgear v7610, Remote Access	Does the Netgear v7610 support Remote Access?	Yes
+Configure	Netgear v7610, LED	How many LEDs are on the front panel of the Netgear v7610?	3
+Configure	Netgear v7610, LED	How many Buttons are on the front panel of the Netgear v7610?	3
+Configure	Netgear v7610, DSL Port	Where is the DSL Port?	Rear Panel <image>
+Configure	Netgear v7610, FXO Port	Where is the FXO Port?	Rear Panel <image>
+Configure	Netgear v7610, FXS1 Port	Where is the FXS1 Port?	Rear Panel <image>
+Configure	Netgear v7610, FXS2 Port	Where is the FXS2 Port?	Rear Panel <image>
+Configure	Netgear v7610, LAN Port	Where are the LAN Ports?	Rear Panel <image>
+Configure	Netgear v7610, WAN Port	Where is the WAN Port?	Rear Panel <image>
+Configure	Netgear v7610, Power Button	Where is the Power Button?	Rear Panel <image>
+Configure	Netgear v7610, Reset Button	Where is the Reset Button?	Rear Panel <image>
+Configure	Netgear v7610, Power Port	Where is the Power Port?	Rear Panel <image>

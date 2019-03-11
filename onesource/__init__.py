@@ -23,7 +23,8 @@ from write_to_database import WriteToDatabaseStep
 from write_to_neo4j import WriteToNeo4JStep
 
 
-def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, logger: Logger=None):
+def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, delete: bool,
+                       logger: Logger = None):
     if not os.path.exists(read_root_dir):
         sys.exit("read dir '{}' not found".format(read_root_dir))
 
@@ -87,7 +88,7 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
 
     # setup pipeline
     pipe = Pipeline(control_data, logger, temp_path, overwrite=overwrite)([
-        TikaExtractStep('Tika extract', 'files'),
+        TikaExtractStep('Tika extract', 'files', delete=delete),
         # ExtractStep('Extract text', 'files'),
         # CollectStep('Collect text'),
         # IdentifyQuestionsStep('Identify questions'),
@@ -95,8 +96,8 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         # WriteToDatabaseStep('Write to database', overwrite=overwrite),
         # WriteToNeo4JStep('Write to Neo4J', overwrite=overwrite),
         # CombineStep('Combine text', overwrite=overwrite)
-        # PrepForDrQAStep('Prepare text', overwrite=overwrite),
-        ExtractEntitiesStep('Extract entities', overwrite=overwrite)
+        PrepForDrQAStep('Prepare text', overwrite=overwrite),
+        # ExtractEntitiesStep('Extract entities', overwrite=overwrite),
         # Parallel()([
         #     ExtractRelationsStep('Extract relations')
         #     ExtractQuestionsStep('Extract questions'),
@@ -117,7 +118,8 @@ if __name__ == "__main__":
     parser.add_argument('--temp', dest='temp_dir', help='temp dir', default=tempfile.gettempdir())
     parser.add_argument('--overwrite', dest='overwrite', help='overwrite any processed files', action='store_true')
     parser.add_argument('--no-overwrite', dest='overwrite', help='overwrite any processed files', action='store_false')
-    parser.set_defaults(overwrite=False)
+    parser.add_argument('--delete', dest='delete', help='delete file after read', action='store_true')
+    parser.set_defaults(overwrite=False, delete=False)
     args = parser.parse_args()
 
-    create_and_run_job(args.read_root_dir, args.write_root_dir, args.temp_dir, args.overwrite)
+    create_and_run_job(args.read_root_dir, args.write_root_dir, args.temp_dir, args.overwrite, args.delete)

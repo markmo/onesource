@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+from dateutil.parser import parse
 from duckling import DucklingWrapper
 from flair.data import Sentence
 from flair.models import SequenceTagger
@@ -76,9 +77,45 @@ class ExtractEntitiesStep(AbstractStep):
 
             entities.extend(matches)
             entities.extend(self.match_system_entities(t))
+
+            # is the span of an entity contained within the span
+            # of another entity
+            def is_contained(entity):
+                start, end = entity['location']
+                for ent in entities:
+                    s, e = ent['location']
+                    # exclude exact span matches
+                    if (start == s and end < e) or (start > s and end == e) or (start > s and end < e):
+                        return True
+
+                return False
+
+            def is_valid(entity):
+                # remove spurious dates
+                if entity['entity'] == 'sys-date':
+                    start, end = entity['location']
+                    if (end - start) < 8:
+                        return False
+
+                    value = entity['value']
+                    if isinstance(value, str):
+                        try:
+                            date = parse(value)
+                        except ValueError:
+                            return False
+
+                        year = date.year
+                        if year < 1990 or year > 2025:
+                            return False
+
+                return True
+
+            # keep the entity with the longest span where an entity
+            # is contained within the span of another
+            pruned_entities = [ent for ent in entities if not is_contained(ent) and is_valid(ent)]
             nlp_text.append({
                 'text': t,
-                'entities': entities
+                'entities': pruned_entities
             })
 
         now = datetime.utcnow().isoformat()

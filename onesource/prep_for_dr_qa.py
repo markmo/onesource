@@ -3,18 +3,13 @@ import json
 from logging import Logger
 import os
 import pandas as pd
-from pipeline import AbstractStep, file_iter, text_output_handler as oh
+from pipeline import AbstractStep, file_iter, json_lines_output_handler as oh
 import re
 import spacy
 from table_util import infer_schema, table_to_natural_text
 from typing import Any, AnyStr, Callable, Dict, Iterator, IO, List, Optional, Union
 from utils import convert_name_to_underscore
-import yaml
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-CONFIG_FILE_PATH = os.path.join(dir_path, '../config/config.yml')
-
-FLUSH_FILE_COUNT = 100
+import uuid
 
 
 class PrepForDrQAStep(AbstractStep):
@@ -27,7 +22,7 @@ class PrepForDrQAStep(AbstractStep):
                  source_key: str = None,
                  overwrite: bool = False,
                  source_iter: Callable[[List[str]], Iterator[IO[AnyStr]]] = file_iter,
-                 output_handler: Callable[[str, List[str], Optional[bool]], None] = oh):
+                 output_handler: Callable[[str, List[Dict[str, Any]], Optional[bool]], None] = oh):
         super().__init__(name, source_key, overwrite)
         self.__source_iter = source_iter
         self.__output_handler = output_handler
@@ -39,10 +34,11 @@ class PrepForDrQAStep(AbstractStep):
                      control_data: Dict[str, Any],
                      logger: Logger,
                      accumulator: Dict[str, Any]
-                     ) -> List[str]:
+                     ) -> str:
         logger.debug('process file: {}'.format(file.name))
-        # config = load_config()
         input_doc = json.load(file)
+        metadata = input_doc['metadata']
+        record_id = metadata['record_id']
         texts = []
         data = input_doc['data']
         accumulator['files_processed'].append({
@@ -75,42 +71,36 @@ class PrepForDrQAStep(AbstractStep):
 
                 prev_type = x['type']
 
-        return texts
+        formatted = []
+        for t in texts:
+            formatted.append({
+                'id': str(uuid.uuid4()),
+                'text': t
+            })
+
+        write_root_dir = control_data['job']['write_root_dir']
+        step_name = convert_name_to_underscore(self.name)
+        output_filename = '{}_{}.jsonl'.format(step_name, record_id)
+        output_path = os.path.join(write_root_dir, step_name, output_filename)
+        update_control_info_(file.name, path, output_filename, output_path, accumulator)
+        self.__output_handler(output_path, formatted, self._overwrite)
+        return output_path
 
     def run(self, control_data: Dict[str, Any], logger: Logger, accumulator: Dict[str, Any]) -> None:
         file_paths = [x['path'] for x in control_data[self.source_key]]
-        write_root_dir = control_data['job']['write_root_dir']
         step_name = convert_name_to_underscore(self.name)
-        output_filename = '{}.txt'.format(step_name)
-        output_path = os.path.join(write_root_dir, step_name, output_filename)
-        output = {
-            'filename': output_filename,
-            'path': output_path,
-            'status': 'processed',
-            'time': datetime.utcnow().isoformat()
-        }
-        accumulator['files_output'].append(output)
-        processed_file_paths = []
-        if step_name in control_data and control_data[step_name]['status'] == 'processed':
-            processed_file_paths = control_data[step_name]['input']
+        processed_file_paths = {}
+        if step_name in control_data:
+            for x in control_data[step_name]:
+                if x['status'] == 'processed':
+                    processed_file_paths[x['input']] = x
 
-        paths = []
-        text = []
-        j = 0
         for file, path in self.__source_iter(file_paths):
-            paths.append(path)
             if not self._overwrite and path in processed_file_paths:
+                accumulator['files_output'].append(processed_file_paths[path])
                 continue
 
-            text.extend(self.process_file(file, path, control_data, logger, accumulator))
-            j += 1
-            # manage memory use - flush every 100th file
-            if j % FLUSH_FILE_COUNT == 0:
-                self.__output_handler(output_path, text, self._overwrite)
-                text = []
-
-        self.__output_handler(output_path, text, self._overwrite)
-        output['input'] = paths
+            self.process_file(file, path, control_data, logger, accumulator)
 
     def infer_list_intro(self, text: str) -> Union[str, None]:
         doc = list(self._nlp(text))
@@ -152,8 +142,21 @@ def table_to_dataframe(table: Dict) -> pd.DataFrame:
     return pd.DataFrame(data=rows)
 
 
-def load_config() -> Dict[str, Any]:
-    with open(CONFIG_FILE_PATH, 'r') as f:
-        config = yaml.load(f)
-
-    return config
+def update_control_info_(source_filename: str,
+                         source_path: str,
+                         output_filename: str,
+                         output_path: str,
+                         accumulator: Dict[str, Any]
+                         ) -> None:
+    now = datetime.utcnow().isoformat()
+    accumulator['files_processed'].append({
+        'path': source_filename,
+        'time': now
+    })
+    accumulator['files_output'].append({
+        'filename': output_filename,
+        'input': source_path,
+        'path': output_path,
+        'status': 'processed',
+        'time': now
+    })

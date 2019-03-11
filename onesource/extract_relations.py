@@ -1,18 +1,19 @@
-from core.parser import RelParser
-from core import entity_extraction
-from core import keras_models
+from relation_extraction.core.parser import RelParser
+from relation_extraction.core import entity_extraction
+from relation_extraction.core import keras_models
 from datetime import datetime
 import json
 from logging import Logger
 import os
+from pathlib import Path
 from pipeline import AbstractStep, file_iter, json_output_handler as oh
 from pycorenlp import StanfordCoreNLP
 from typing import Any, AnyStr, Callable, Dict, Iterator, IO, List, Tuple
 from utils import convert_name_to_underscore
 
-GLOVE_PATH = '/Users/d777710/src/DeepLearning/emnlp2017-relation-extraction/resources/glove/glove.6B.50d.txt'
-
-MODELS_PATH = '/Users/d777710/src/DeepLearning/emnlp2017-relation-extraction/relation_extraction/trainedmodels/'
+ROOT_DIR = Path(__file__).parent.parent
+GLOVE_PATH = ROOT_DIR / 'resources' / 'glove' / 'glove.6B.50d.txt'
+MODELS_PATH = ROOT_DIR / 'models' / 'relation_extraction'
 
 
 class ExtractRelationsStep(AbstractStep):
@@ -59,8 +60,8 @@ class ExtractRelationsStep(AbstractStep):
             edges = entity_extraction.generate_edges(entity_fragments)
             tokens = [t for t, _, _ in tagged]
             non_parsed_graph = {'tokens': tokens, 'edgeSet': edges}
-            keras_models.model_params['wordembeddings'] = GLOVE_PATH
-            rel_parser = RelParser('model_ContextWeighted', models_foldes=MODELS_PATH)
+            keras_models.model_params['wordembeddings'] = str(GLOVE_PATH)
+            rel_parser = RelParser('model_ContextWeighted', models_foldes=str(MODELS_PATH))
             parsed_graph = rel_parser.classify_graph_relations(non_parsed_graph)
             # e.g.:
             # {'tokens': ['Germany', 'is', 'a', 'country', 'in', 'Europe'], 'edgeSet': [{'left': [0],

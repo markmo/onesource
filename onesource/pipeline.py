@@ -31,16 +31,18 @@ class AbstractStep(object):
     Interface for step types to implement.
     """
 
-    def __init__(self, name: str, source_key: str = None, overwrite: bool = False):
+    def __init__(self, name: str, source_key: str = None, overwrite: bool = False, delete: bool = False):
         """
 
         :param name: human-readable name of step
         :param source_key: `control_data` key for source list
         :param overwrite: overwrite files flag
+        :param delete: delete file after processing flag
         """
         self.name = name
         self.__source_key = source_key
         self._overwrite = overwrite
+        self._delete = delete
 
     def process_file(self,
                      file: IO[AnyStr],
@@ -343,6 +345,24 @@ def json_output_handler(output_path: str, content: Dict[str, Any]) -> None:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w') as output_file:
         json.dump(content, output_file)
+
+
+def json_lines_output_handler(output_path: str, content: List[Dict[str, Any]], overwrite: bool = False) -> None:
+    """
+    Write text output from step.
+
+    :param output_path: path to output file
+    :param content: JSON lines (See http://jsonlines.org/)
+    :param overwrite: (bool) overwrite file contents if true otherwise append to file
+    :return:
+    """
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    # overwrite else append
+    mode = 'w' if overwrite else 'a'
+    with open(output_path, mode) as output_file:
+        for line in content:
+            output_file.write(json.dumps(line))
+            output_file.write('\n')
 
 
 def text_output_handler(output_path: str, text: List[str], overwrite: bool = False) -> None:

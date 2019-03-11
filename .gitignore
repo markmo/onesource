@@ -157,3 +157,5 @@ fabric.properties
 data
 .env
 entities.csv
+models
+resources
