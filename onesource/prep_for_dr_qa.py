@@ -46,30 +46,29 @@ class PrepForDrQAStep(AbstractStep):
             'time': datetime.utcnow().isoformat()
         })
         if 'structured_content' in data:
-            prev_type = None
             for x in data['structured_content']:
+                # if x['type'] in ['text', 'heading']:
                 if x['type'] == 'text':
+                    # texts.append('<p>{}</p>'.format(x['text']))
                     texts.append(x['text'])
                 elif x['type'] == 'list':
+                    text = ''
                     items = x['items']
-                    if len(items) > 5:
-                        texts.extend(items)
-                    else:
-                        list_intro = ''
-                        if prev_type == 'text':
-                            list_intro = self.infer_list_intro(texts[-1])
-                            if list_intro:
-                                texts.pop()
-                                list_intro += ': '
+                    if 'heading' in x:
+                        # text = '<p>{}</p>'.format(x['heading'])
+                        text = x['heading']
 
-                        texts.append(list_intro + '; '.join([normalize_list_item(it) for it in items]))
+                    text += '<ul>'
+                    for it in items:
+                        text += '<li>{}</li>'.format(it)
+
+                    text += '</ul>'
+                    texts.append(text)
 
                 elif x['type'] == 'table':
                     df = table_to_dataframe(x)
                     schema = infer_schema(df, n_header_rows=len(x['head']))
                     texts.extend(table_to_natural_text(df, schema))
-
-                prev_type = x['type']
 
         formatted = []
         for t in texts:

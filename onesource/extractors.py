@@ -2,7 +2,7 @@ from collections import defaultdict
 import re
 from tableschema import config, Schema, types
 from typing import Any, Dict, List
-from utils import clean_text, strip_link_markers
+from utils import clean_text, remove_bullet_markers, strip_link_markers
 
 BULLET_MARKERS = [u'•', '*', 'o']
 
@@ -149,24 +149,6 @@ class TextExtractor(AbstractExtractor):
         self.__is_anchor = False
         self.__anchor_text = ''
         self.__anchor_url = None
-        self.__weak_continues = False
-        self.__strong_continues = False
-        self.__list_level_stack = []
-
-    def should_break_list(self, token):
-        n = len(self.__list_level_stack)
-        try:
-            idx = self.__list_level_stack.index(token.shape_)
-            if idx == (n - 1):
-                # same level
-                return False
-            else:
-                # back up to higher level
-                self.__list_level_stack = self.__list_level_stack[:idx + 1]
-                return True
-        except ValueError:
-            self.__list_level_stack.append(token.shape_)
-            return True  # new level
 
     def _process_text(self, text: str, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         # ignore blank text
@@ -174,8 +156,6 @@ class TextExtractor(AbstractExtractor):
             return
 
         # split into sentences
-        if text.startswith('''a) the granting'''):
-            print('here')
         doc = nlp(text)
         obj_list = []
         list_levels = defaultdict(list)
@@ -222,9 +202,6 @@ class TextExtractor(AbstractExtractor):
         def is_ordered_li(it):
             return it['type'] == 'ordered_list_item'
 
-        def is_unordered_li(it):
-            return it['type'] == 'unordered_list_item'
-
         def is_ordered_li_and_not_in_list(its, idx):
             if not is_ordered_li(its[idx]):
                 return False
@@ -243,64 +220,55 @@ class TextExtractor(AbstractExtractor):
         def get_text(tks):
             return ''.join([t.text_with_ws for t in tks]).rstrip()
 
-        n_list_items = sum(1 for obj in obj_list if is_list_item(obj))
-        block_starts_with_li = is_list_item(obj_list[0])
-        n = len(obj_list)
         for i, obj in enumerate(obj_list):
             tokens = obj['tokens']
             txt = clean_text(get_text(tokens))
+            out = remove_bullet_markers(txt)
             if is_text_item(obj):
                 if continues(text_list[-1], txt, nlp):
-                    text_list[-1] += ' ' + strip_link_markers(txt)
+                    text_list[-1] += ' ' + strip_link_markers(out)
                     if structured_content[-1]['type'] == 'list':
-                        structured_content[-1]['items'][-1] += ' ' + txt
+                        structured_content[-1]['items'][-1] += ' ' + out
                     else:
-                        structured_content[-1]['text'] += ' ' + txt
+                        structured_content[-1]['text'] += ' ' + out
                 else:
-                    text_list.append(strip_link_markers(txt))
+                    text_list.append(strip_link_markers(out))
                     if maybe_heading(txt, nlp):
-                        structured_content.append({'type': 'heading', 'text': txt})
+                        structured_content.append({'type': 'heading', 'text': out})
                     else:
-                        structured_content.append({'type': 'text', 'text': txt})
+                        structured_content.append({'type': 'text', 'text': out})
             elif is_list_item(obj):
                 list_marker = tokens[0]
-                # break_list = self.should_break_list(list_marker)
-                break_list = False
                 list_subtype = 'ordered' if is_ordered_li(obj) else 'unordered'
                 if (structured_content[-1]['type'] == 'list' and
-                        structured_content[-1]['subtype'] == list_subtype and
-                        not (block_starts_with_li and break_list)):
-                    text_list.append(strip_link_markers(txt))
-                    structured_content[-1]['items'].append(txt)
-                # elif (structured_content[-1]['type'] == 'text' and is_ordered_li(obj) and
-                #       n_list_items == 1 and continues(text_list[-1], txt, nlp)):
-                #     text_list[-1] += ' ' + strip_link_markers(txt)
-                #     structured_content[-1]['text'] += ' ' + txt
+                        structured_content[-1]['subtype'] == list_subtype):
+                    text_list.append(strip_link_markers(out))
+                    structured_content[-1]['items'].append(out)
                 elif is_ordered_li_and_not_in_list(obj_list, i) and maybe_heading(tokens):
-                    text_list.append(strip_link_markers(txt))
-                    structured_content.append({'type': 'heading', 'text': txt})
+                    text_list.append(strip_link_markers(out))
+                    structured_content.append({'type': 'heading', 'text': out})
                 elif is_ordered_li_and_not_in_list(obj_list, i):
-                    text_list.append(strip_link_markers(txt))
-                    structured_content.append({'type': 'text', 'text': txt})
+                    text_list.append(strip_link_markers(out))
+                    structured_content.append({'type': 'text', 'text': out})
                 elif (structured_content[-1]['type'] in ['text', 'heading'] and
                       not (is_ordered_li(obj) and list_marker.text.lower() not in ['1', 'a', 'i'])):
-                    text_list.append(strip_link_markers(txt))
+                    text_list.append(strip_link_markers(out))
                     structured_content[-1] = {
                         'type': 'list',
                         'subtype': list_subtype,
                         'heading': structured_content[-1]['text'],
-                        'items': [txt]
+                        'items': [out]
                     }
-                elif is_ordered_li(obj) and list_marker.text[0].lower() not in ['1', 'a', 'i']:
+                elif is_ordered_li(obj) and list_marker.text.lower() not in ['1', 'a', 'i']:
                     if maybe_heading(tokens):
-                        text_list.append(strip_link_markers(txt))
-                        structured_content.append({'type': 'heading', 'text': txt})
+                        text_list.append(strip_link_markers(out))
+                        structured_content.append({'type': 'heading', 'text': out})
                     else:
-                        text_list.append(strip_link_markers(txt))
-                        structured_content.append({'type': 'text', 'text': txt})
+                        text_list.append(strip_link_markers(out))
+                        structured_content.append({'type': 'text', 'text': out})
                 else:
-                    text_list.append(strip_link_markers(txt))
-                    structured_content.append({'type': 'list', 'subtype': list_subtype, 'items': [txt]})
+                    text_list.append(strip_link_markers(out))
+                    structured_content.append({'type': 'list', 'subtype': list_subtype, 'items': [out]})
             else:
                 raise NotImplementedError
 
@@ -424,6 +392,7 @@ class ListExtractor(AbstractExtractor):
         self.__is_anchor = False
         self.__anchor_text = ''
         self.__anchor_url = None
+        self.__list_level = 0
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         if el.tag in self.__excluded_tags:
@@ -437,29 +406,33 @@ class ListExtractor(AbstractExtractor):
             if el.tag in ['ul', 'ol']:
                 if ev == 'start':
                     self.__is_list = True
+                    self.__list_level += 1
 
                 elif ev == 'end':
-                    if self.__current_text:
-                        c = clean_text(self.__current_text)
-                        if c:
-                            text_list.append(strip_link_markers(c))
-                            if self.__is_heading:
-                                self.__heading_text += self.__current_text
-                            else:
-                                structured_content.append({'type': 'text', 'text': c})
+                    # flatten nested lists
+                    self.__list_level -= 1
+                    if self.__list_level == 0:
+                        if self.__current_text:
+                            c = clean_text(self.__current_text)
+                            if c:
+                                text_list.append(strip_link_markers(c))
+                                if self.__is_heading:
+                                    self.__heading_text += self.__current_text
+                                else:
+                                    structured_content.append({'type': 'text', 'text': c})
 
-                    if self.__heading_text:
-                        self.__list_content['heading'] = clean_text(self.__heading_text)
+                        if self.__heading_text:
+                            self.__list_content['heading'] = clean_text(self.__heading_text)
 
-                    if self.__heading_text or self.__list_content['items']:
-                        structured_content.append(self.__list_content)
+                        if self.__heading_text or self.__list_content['items']:
+                            structured_content.append(self.__list_content)
 
-                    self.__list_content = {'type': 'list', 'subtype': 'unordered', 'items': []}
-                    self.__is_items = False
-                    self.__is_heading = False
-                    self.__is_list = False
-                    self.__heading_text = ''
-                    self.__current_text = ''
+                        self.__list_content = {'type': 'list', 'subtype': 'unordered', 'items': []}
+                        self.__is_items = False
+                        self.__is_heading = False
+                        self.__is_list = False
+                        self.__heading_text = ''
+                        self.__current_text = ''
 
             elif self.__is_list:
                 if el.tag in self.__heading_tags and ev == 'start' and not self.__is_items:
@@ -800,9 +773,6 @@ def is_ordered_list_item(token, next_token):
         if is_roman_numeral(token):
             return True
 
-    # if is_list_num(token):
-    #     return True
-
     if is_roman_numeral(token):
         return True
 
@@ -823,10 +793,6 @@ def is_roman_numeral(token):
 
     match = re.match(r'^(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})[.)]?$', token.text.strip(), re.IGNORECASE)
     return True if match else False
-
-
-def strong_continuation(leading_text):
-    return not leading_text.endswith(('.', '?', '!')) or leading_text.endswith((',', ';', ':'))
 
 
 def continues(leading_text, following_text, nlp):

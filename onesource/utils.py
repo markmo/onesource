@@ -10,23 +10,33 @@ def clean_text(text: str) -> str:
     """
     Remove non-ascii chars and extra whitespace.
 
-    :param text: str
-    :return: str
+    :param text: (str)
+    :return: (str)
     """
     if not text:
         return ''
 
+    # replace all contiguous whitespace with a single space
+    t = re.sub(r'\s+', ' ', text)
+
+    # trim whitespace at start and end
+    t = t.strip()
+
+    return t
+
+
+def remove_bullet_markers(text: str) -> str:
+    """
+    Remove bullet chars.
+
+    :param text: (str)
+    :return: (str)
+    """
     # replace bullet chars
     t = re.sub(r'^[•*o]\s', '', text)
 
     # replace non-ascii chars
     t = re.sub(r'[^\x00-\x7F]+', '', t)
-
-    # replace all contiguous whitespace with a single space
-    t = re.sub(r'\s+', ' ', t)
-
-    # trim whitespace at start and end
-    t = t.strip()
 
     return t
 
@@ -71,7 +81,7 @@ start_tag_re = re.compile(r'^\s*<')
 
 end_tag_re = re.compile(r'>\s*$')
 
-variable_re = re.compile('^{[\w.]*}$')
+variable_re = re.compile(r'^{[\w.]*}$')
 
 
 def fix_content(content: str) -> str:

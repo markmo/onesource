@@ -1,6 +1,6 @@
 from datetime import datetime
 from extractors import AbstractExtractor, HeadingExtractor, ListExtractor, TableExtractor, TextExtractor
-from extractors import maybe_heading, is_bullet, is_list_num, is_ordered_list_item
+from extractors import maybe_heading, is_bullet, is_ordered_list_item
 from io import BytesIO
 from logging import Logger
 from lxml import etree
