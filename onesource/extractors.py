@@ -1,6 +1,10 @@
+from collections import defaultdict
+import re
 from tableschema import config, Schema, types
 from typing import Any, Dict, List
 from utils import clean_text, strip_link_markers
+
+BULLET_MARKERS = [u'•', '*', 'o']
 
 LINK_OPEN_MARKER = '[['
 
@@ -145,40 +149,170 @@ class TextExtractor(AbstractExtractor):
         self.__is_anchor = False
         self.__anchor_text = ''
         self.__anchor_url = None
-        self.__text_continues = False
+        self.__weak_continues = False
+        self.__strong_continues = False
+        self.__list_level_stack = []
+
+    def should_break_list(self, token):
+        n = len(self.__list_level_stack)
+        try:
+            idx = self.__list_level_stack.index(token.shape_)
+            if idx == (n - 1):
+                # same level
+                return False
+            else:
+                # back up to higher level
+                self.__list_level_stack = self.__list_level_stack[:idx + 1]
+                return True
+        except ValueError:
+            self.__list_level_stack.append(token.shape_)
+            return True  # new level
+
+    def _process_text(self, text: str, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
+        # ignore blank text
+        if len(text.strip()) == 0:
+            return
+
+        # split into sentences
+        if text.startswith('''a) the granting'''):
+            print('here')
+        doc = nlp(text)
+        obj_list = []
+        list_levels = defaultdict(list)
+        i = 0
+        for sent in doc.sents:
+            # ignore blank sentences
+            if len(sent.text.strip()) == 0:
+                continue
+
+            # split by bullet marker or list number if present
+            list_item_text = []
+            cur_text = []
+            n = len(sent)
+            is_list = False
+            for j, token in enumerate(sent):
+                next_token = sent[j + 1] if (j + 2) < n else None
+                if j == 0:
+                    if is_bullet(token):
+                        list_item_text = []
+                        obj = {'type': 'unordered_list_item', 'tokens': list_item_text}
+                        obj_list.append(obj)
+                        list_levels[token.shape_].append(obj)
+                        is_list = True
+                    elif is_ordered_list_item(token, next_token):
+                        list_item_text = []
+                        obj = {'type': 'ordered_list_item', 'tokens': list_item_text}
+                        obj_list.append(obj)
+                        list_levels[token.shape_].append(obj)
+                        is_list = True
+
+                if is_list:
+                    list_item_text.append(token)
+                else:
+                    cur_text.append(token)
+
+            if len(cur_text) > 0:
+                obj_list.append({'type': 'text', 'tokens': cur_text})
+
+            i += 1
+
+        def is_list_item(it):
+            return it['type'] in ['unordered_list_item', 'ordered_list_item']
+
+        def is_ordered_li(it):
+            return it['type'] == 'ordered_list_item'
+
+        def is_unordered_li(it):
+            return it['type'] == 'unordered_list_item'
+
+        def is_ordered_li_and_not_in_list(its, idx):
+            if not is_ordered_li(its[idx]):
+                return False
+
+            if idx > 0 and is_ordered_li(its[idx - 1]):
+                return False
+
+            if idx < (len(its) - 1) and is_ordered_li(its[idx + 1]):
+                return False
+
+            return True
+
+        def is_text_item(it):
+            return it['type'] == 'text'
+
+        def get_text(tks):
+            return ''.join([t.text_with_ws for t in tks]).rstrip()
+
+        n_list_items = sum(1 for obj in obj_list if is_list_item(obj))
+        block_starts_with_li = is_list_item(obj_list[0])
+        n = len(obj_list)
+        for i, obj in enumerate(obj_list):
+            tokens = obj['tokens']
+            txt = clean_text(get_text(tokens))
+            if is_text_item(obj):
+                if continues(text_list[-1], txt, nlp):
+                    text_list[-1] += ' ' + strip_link_markers(txt)
+                    if structured_content[-1]['type'] == 'list':
+                        structured_content[-1]['items'][-1] += ' ' + txt
+                    else:
+                        structured_content[-1]['text'] += ' ' + txt
+                else:
+                    text_list.append(strip_link_markers(txt))
+                    if maybe_heading(txt, nlp):
+                        structured_content.append({'type': 'heading', 'text': txt})
+                    else:
+                        structured_content.append({'type': 'text', 'text': txt})
+            elif is_list_item(obj):
+                list_marker = tokens[0]
+                # break_list = self.should_break_list(list_marker)
+                break_list = False
+                list_subtype = 'ordered' if is_ordered_li(obj) else 'unordered'
+                if (structured_content[-1]['type'] == 'list' and
+                        structured_content[-1]['subtype'] == list_subtype and
+                        not (block_starts_with_li and break_list)):
+                    text_list.append(strip_link_markers(txt))
+                    structured_content[-1]['items'].append(txt)
+                # elif (structured_content[-1]['type'] == 'text' and is_ordered_li(obj) and
+                #       n_list_items == 1 and continues(text_list[-1], txt, nlp)):
+                #     text_list[-1] += ' ' + strip_link_markers(txt)
+                #     structured_content[-1]['text'] += ' ' + txt
+                elif is_ordered_li_and_not_in_list(obj_list, i) and maybe_heading(tokens):
+                    text_list.append(strip_link_markers(txt))
+                    structured_content.append({'type': 'heading', 'text': txt})
+                elif is_ordered_li_and_not_in_list(obj_list, i):
+                    text_list.append(strip_link_markers(txt))
+                    structured_content.append({'type': 'text', 'text': txt})
+                elif (structured_content[-1]['type'] in ['text', 'heading'] and
+                      not (is_ordered_li(obj) and list_marker.text.lower() not in ['1', 'a', 'i'])):
+                    text_list.append(strip_link_markers(txt))
+                    structured_content[-1] = {
+                        'type': 'list',
+                        'subtype': list_subtype,
+                        'heading': structured_content[-1]['text'],
+                        'items': [txt]
+                    }
+                elif is_ordered_li(obj) and list_marker.text[0].lower() not in ['1', 'a', 'i']:
+                    if maybe_heading(tokens):
+                        text_list.append(strip_link_markers(txt))
+                        structured_content.append({'type': 'heading', 'text': txt})
+                    else:
+                        text_list.append(strip_link_markers(txt))
+                        structured_content.append({'type': 'text', 'text': txt})
+                else:
+                    text_list.append(strip_link_markers(txt))
+                    structured_content.append({'type': 'list', 'subtype': list_subtype, 'items': [txt]})
+            else:
+                raise NotImplementedError
 
     def extract(self, el, ev, structured_content: List[Dict[str, Any]], text_list: List[str], nlp=None):
         if el.tag in self.__excluded_tags:
             if ev == 'start':
                 self.__excluded_stack_count += 1
                 if self.__current_text:
-                    c = clean_text(self.__current_text)
+                    c = self.__current_text
                     self.__current_text = ''
                     if c:
-                        # if c[0].isupper():
-                        #     self.__text_continues = False
-
-                        doc = nlp(c)
-                        s = ''
-                        for i, sent in enumerate(doc.sents):
-                            if i > 0:
-                                self.__text_continues = False
-
-                            s = sent.text
-                            if self.__text_continues:
-                                text_list[-1] += ' ' + strip_link_markers(s)
-                                structured_content[-1]['text'] += ' ' + s
-                            else:
-                                text_list.append(strip_link_markers(s))
-                                if detect_heading(s, nlp):
-                                    structured_content.append({'type': 'heading', 'text': s})
-                                else:
-                                    structured_content.append({'type': 'text', 'text': s})
-
-                        if not s.endswith(('.', '?', '!')):
-                            self.__text_continues = True
-                        else:
-                            self.__text_continues = False
+                        self._process_text(c, structured_content, text_list, nlp)
 
             elif ev == 'end':
                 self.__excluded_stack_count -= 1
@@ -189,33 +323,10 @@ class TextExtractor(AbstractExtractor):
         elif not self.__is_excluded():
             if el.tag == 'br' and ev == 'end':
                 if self.__current_text:
-                    c = clean_text(self.__current_text)
+                    c = self.__current_text
                     self.__current_text = ''
                     if c:
-                        # if c[0].isupper():
-                        #     self.__text_continues = False
-
-                        doc = nlp(c)
-                        s = ''
-                        for i, sent in enumerate(doc.sents):
-                            if i > 0:
-                                self.__text_continues = False
-
-                            s = sent.text
-                            if self.__text_continues:
-                                text_list[-1] += ' ' + strip_link_markers(s)
-                                structured_content[-1]['text'] += ' ' + s
-                            else:
-                                text_list.append(strip_link_markers(s))
-                                if detect_heading(s, nlp):
-                                    structured_content.append({'type': 'heading', 'text': s})
-                                else:
-                                    structured_content.append({'type': 'text', 'text': s})
-
-                        if not s.endswith(('.', '?', '!')):
-                            self.__text_continues = True
-                        else:
-                            self.__text_continues = False
+                        self._process_text(c, structured_content, text_list, nlp)
 
                 if el.tail:
                     self.__current_text += el.tail
@@ -223,66 +334,20 @@ class TextExtractor(AbstractExtractor):
             elif el.tag in ['p', 'div']:
                 if ev == 'start':
                     if self.__current_text:
-                        c = clean_text(self.__current_text)
+                        c = self.__current_text
                         self.__current_text = ''
                         if c:
-                            # if c[0].isupper():
-                            #     self.__text_continues = False
-
-                            doc = nlp(c)
-                            s = ''
-                            for i, sent in enumerate(doc.sents):
-                                if i > 0:
-                                    self.__text_continues = False
-
-                                s = sent.text
-                                if self.__text_continues:
-                                    text_list[-1] += ' ' + strip_link_markers(s)
-                                    structured_content[-1]['text'] += ' ' + s
-                                else:
-                                    text_list.append(strip_link_markers(s))
-                                    if detect_heading(s, nlp):
-                                        structured_content.append({'type': 'heading', 'text': s})
-                                    else:
-                                        structured_content.append({'type': 'text', 'text': s})
-
-                            if not s.endswith(('.', '?', '!')):
-                                self.__text_continues = True
-                            else:
-                                self.__text_continues = False
+                            self._process_text(c, structured_content, text_list, nlp)
 
                     if el.text:
                         self.__current_text += el.text
 
                 elif ev == 'end':
                     if self.__current_text:
-                        c = clean_text(self.__current_text)
+                        c = self.__current_text
                         self.__current_text = ''
                         if c:
-                            # if c[0].isupper():
-                            #     self.__text_continues = False
-
-                            doc = nlp(c)
-                            s = ''
-                            for i, sent in enumerate(doc.sents):
-                                if i > 0:
-                                    self.__text_continues = False
-
-                                s = sent.text
-                                if self.__text_continues:
-                                    text_list[-1] += ' ' + strip_link_markers(s)
-                                    structured_content[-1]['text'] += ' ' + s
-                                else:
-                                    text_list.append(strip_link_markers(s))
-                                    if detect_heading(s, nlp):
-                                        structured_content.append({'type': 'heading', 'text': s})
-                                    else:
-                                        structured_content.append({'type': 'text', 'text': s})
-
-                            if not s.endswith(('.', '?', '!')):
-                                self.__text_continues = True
-                            else:
-                                self.__text_continues = False
+                            self._process_text(c, structured_content, text_list, nlp)
 
                     if el.tail:
                         self.__current_text += el.tail
@@ -355,7 +420,7 @@ class ListExtractor(AbstractExtractor):
         self.__is_heading = False
         self.__is_items = False
         self.__is_list = False
-        self.__list_content = {'type': 'list', 'items': []}
+        self.__list_content = {'type': 'list', 'subtype': 'unordered', 'items': []}
         self.__is_anchor = False
         self.__anchor_text = ''
         self.__anchor_url = None
@@ -389,7 +454,7 @@ class ListExtractor(AbstractExtractor):
                     if self.__heading_text or self.__list_content['items']:
                         structured_content.append(self.__list_content)
 
-                    self.__list_content = {'type': 'list', 'items': []}
+                    self.__list_content = {'type': 'list', 'subtype': 'unordered', 'items': []}
                     self.__is_items = False
                     self.__is_heading = False
                     self.__is_list = False
@@ -680,10 +745,100 @@ def guess_type(value):
             return name
 
 
-def detect_heading(text, nlp):
+def has_alpha(text, nlp):
     doc = nlp(text)
     for token in doc:
-        if not (token.is_stop or token.is_title or token.is_upper or token.is_digit or token.is_punc):
-            return False
+        if token.is_alpha:
+            return True
+
+    return False
+
+
+def maybe_heading(text_or_tokens, nlp=None):
+    if nlp is None:
+        doc = text_or_tokens
+    else:
+        doc = nlp(text_or_tokens)
+
+    n = len(doc)
+    for i, token in enumerate(doc):
+        if '\n' in token.text:
+            continue
+
+        next_token = doc[i + 1] if (i + 2) < n else None
+        if i == 0:
+            if not (token.is_title or token.is_upper or is_ordered_list_item(token, next_token)):
+                return False
+        elif i == (n - 1):
+            if not (token.is_title or token.is_upper or token.is_digit or token.text in ['.', ':', ')']):
+                return False
+        else:
+            if not (token.is_title or token.is_upper or token.is_stop or token.is_punct or
+                    token.is_digit or token.text in [',', '-']):
+                return False
 
     return True
+
+
+def is_bullet(token):
+    return token.text in BULLET_MARKERS
+
+
+def is_list_num(token):
+    match = re.match(r'^(\d\.?){1,3}$', token.text.strip())
+    return True if match else False
+
+
+def is_ordered_list_item(token, next_token):
+    if next_token and next_token.text in ['.', ')']:
+        if is_list_num(token):
+            return True
+
+        if token.is_alpha and len(token) == 1:
+            return True
+
+        if is_roman_numeral(token):
+            return True
+
+    # if is_list_num(token):
+    #     return True
+
+    if is_roman_numeral(token):
+        return True
+
+    return False
+
+
+def is_roman_numeral(token):
+    """
+    Validate if a Spacy Token is a roman numeral
+
+    See https://stackoverflow.com/questions/267399/how-do-you-match-only-valid-roman-numerals-with-a-regular-expression
+
+    :param token: Spacy Token
+    :return: (bool)
+    """
+    if token.is_space or token.text in ['.', ')']:
+        return False
+
+    match = re.match(r'^(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})[.)]?$', token.text.strip(), re.IGNORECASE)
+    return True if match else False
+
+
+def strong_continuation(leading_text):
+    return not leading_text.endswith(('.', '?', '!')) or leading_text.endswith((',', ';', ':'))
+
+
+def continues(leading_text, following_text, nlp):
+    if leading_text.endswith(('.', '?', '!')):
+        return False
+
+    if leading_text.endswith((',', ';', ':')):
+        return True
+
+    is_leading_heading = maybe_heading(leading_text, nlp)
+    is_following_heading = maybe_heading(following_text, nlp)
+    if is_leading_heading or is_following_heading:
+        return False
+    else:
+        return True

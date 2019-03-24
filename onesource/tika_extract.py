@@ -1,15 +1,81 @@
 from datetime import datetime
 from extractors import AbstractExtractor, HeadingExtractor, ListExtractor, TableExtractor, TextExtractor
+from extractors import maybe_heading, is_bullet, is_list_num, is_ordered_list_item
 from io import BytesIO
 from logging import Logger
 from lxml import etree
 import lxml.html
 import os
 from pipeline import AbstractStep, file_iter, HIDDEN_FILE_PREFIXES, json_output_handler as oh
-import spacy
+from spacy.lang.en import English
+from spacy import pipeline as spacy_pipeline
 from tika import parser
 from typing import Any, AnyStr, Callable, Dict, IO, Iterator, List, Tuple
 from utils import convert_name_to_underscore, fix_content, flatten
+
+
+def split_sentences(doc):
+    """ Custom sentence segmentation """
+    start = 0
+    line_start = 0
+    n = len(doc)
+    in_list_num = False
+    newline = False
+    line = []
+    for j, word in enumerate(doc):
+        i = word.i
+        next_token = doc[j + 1] if (j + 2) < n else None
+        if newline:
+            newline = False
+            if is_bullet(word):
+                yield doc[start:i]
+                start = i
+            elif is_ordered_list_item(word, next_token):
+                in_list_num = True
+                yield doc[start:i]
+                start = i
+            elif line_start == 0 and maybe_heading(line):
+                if line_start > start:
+                    yield doc[start:line_start]
+
+                yield doc[line_start:i]
+                start = i
+            elif len(line) > 1 and is_ordered_list_item(line[0], line[1]) and maybe_heading(line):
+                if line_start > start:
+                    yield doc[start:line_start]
+
+                yield doc[line_start:i]
+                start = i
+
+            line = []
+            line_start = i
+        elif '\n' in word.text:
+            newline = True
+        elif is_bullet(word) and i != 0:
+            yield doc[start:i]
+            start = i
+        elif word.text in ['?', '!']:
+            yield doc[start:i + 1]
+            start = i + 1
+        elif word.text == '.':
+            if ((i + 1) == n or doc[i + 1].is_title or doc[i + 1].is_space) and not in_list_num:
+                yield doc[start:i + 1]
+                start = i + 1
+        elif is_ordered_list_item(word, next_token):
+            in_list_num = True
+        else:
+            in_list_num = False
+
+        line.append(word)
+
+    if start < n:
+        if line_start == 0 and maybe_heading(line):
+            if line_start > start:
+                yield doc[start:line_start]
+
+            yield doc[line_start:n]
+        else:
+            yield doc[start:n]
 
 
 class TikaExtractStep(AbstractStep):
@@ -41,7 +107,16 @@ class TikaExtractStep(AbstractStep):
         self.__output_handler = output_handler
         self.__excluded_tags = excluded_tags or ['GUID']
         self.__max_file_count = max_file_count
-        self.__nlp = spacy.load('en_core_web_sm')
+
+        # The sentencizer component is a pipeline component that splits sentences
+        # on punctuation like ., ! or ?. You can plug it into your pipeline if you
+        # only need sentence boundaries without the dependency parse. Note that
+        # Doc.sents will raise an error if no sentence boundaries are set.
+        nlp = English()  # just the language with no model
+        # sbd = nlp.create_pipe('sentencizer')
+        sbd = spacy_pipeline.SentenceSegmenter(nlp.vocab, strategy=split_sentences)
+        nlp.add_pipe(sbd)
+        self.__nlp = nlp
 
     def element_iterator(self,
                          stream: IO[AnyStr],

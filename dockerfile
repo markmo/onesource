@@ -13,6 +13,8 @@ WORKDIR /usr/src/app
 # add and install requirements
 COPY ./requirements.txt /usr/src/app/requirements.txt
 RUN pip install -r requirements.txt
+RUN python -m spacy download en_core_web_sm
+RUN python -m spacy download en
 
 # add and install libraries
 COPY ./libs/relation_extraction-0.1-py3-none-any.whl /usr/src/app/relation_extraction-0.1-py3-none-any.whl

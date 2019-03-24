@@ -1,26 +1,15 @@
 from argparse import ArgumentParser
-from collect import CollectStep
-from combine import CombineStep
 from datetime import datetime
-from extract import ExtractStep
-from extract_entities import ExtractEntitiesStep
-from extract_questions import ExtractQuestionsStep
-from extract_relations import ExtractRelationsStep
-from identify_questions import IdentifyQuestionsStep
-from identify_questions_naive import IdentifyQuestionsNaiveStep
 import json
 import logging
 from logging import Logger
 import os
-from pipeline import HIDDEN_FILE_PREFIXES, Parallel, Pipeline
+from pipeline import HIDDEN_FILE_PREFIXES, Pipeline
 from prep_for_dr_qa import PrepForDrQAStep
 import sys
 import tempfile
 from tika_extract import TikaExtractStep
 from timeit import default_timer as timer
-from transform import TransformStep
-from write_to_database import WriteToDatabaseStep
-from write_to_neo4j import WriteToNeo4JStep
 
 
 def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, delete: bool,

@@ -16,8 +16,11 @@ def clean_text(text: str) -> str:
     if not text:
         return ''
 
+    # replace bullet chars
+    t = re.sub(r'^[•*o]\s', '', text)
+
     # replace non-ascii chars
-    t = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    t = re.sub(r'[^\x00-\x7F]+', '', t)
 
     # replace all contiguous whitespace with a single space
     t = re.sub(r'\s+', ' ', t)
