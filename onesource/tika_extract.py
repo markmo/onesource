@@ -196,7 +196,10 @@ class TikaExtractStep(AbstractStep):
         logger.debug('process file: {}'.format(file.name))
         write_root_dir = control_data['job']['write_root_dir']
         parsed = parser.from_file(path, xmlContent=True)
-        ext = os.path.splitext(path)[1].lower()
+        filename = os.path.basename(path)
+        nameparts = os.path.splitext(filename)
+        name = nameparts[0]
+        ext = nameparts[1].lower()
         if ext == '.docx':
             doc_type = 'Word'
         elif ext == '.pdf':
@@ -204,10 +207,11 @@ class TikaExtractStep(AbstractStep):
         else:
             doc_type = None
 
+        now = datetime.utcnow().isoformat()
         metadata = parsed['metadata']
-        record_id = metadata['dc:title'].replace(' ', '_')
-        created_date = metadata['dcterms:created'][0]
-        last_mod_date = metadata['dcterms:modified'][0]
+        record_id = metadata.get('dc:title', name).replace(' ', '_')
+        created_date = metadata['dcterms:created'][0] if 'dcterms:created' in metadata else now
+        last_mod_date = metadata['dcterms:modified'][0] if 'dcterms:modified' in metadata else now
         author = metadata.get('meta:last-author', '')
         word_count = int(metadata.get('meta:word-count', '-1'))
         accumulator.update({

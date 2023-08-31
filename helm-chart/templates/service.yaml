@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: "{{ .Values.app }}-service"
+  namespace: "{{ .Values.namespace }}"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Values.app }}"
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000

@@ -225,7 +225,7 @@ class TextExtractor(AbstractExtractor):
             txt = clean_text(get_text(tokens))
             out = remove_bullet_markers(txt)
             if is_text_item(obj):
-                if continues(text_list[-1], txt, nlp):
+                if has_length(text_list) and continues(text_list[-1], txt, nlp):
                     text_list[-1] += ' ' + strip_link_markers(out)
                     if structured_content[-1]['type'] == 'list':
                         structured_content[-1]['items'][-1] += ' ' + out
@@ -725,6 +725,10 @@ def has_alpha(text, nlp):
             return True
 
     return False
+
+
+def has_length(list):
+    return len(list) > 0
 
 
 def maybe_heading(text_or_tokens, nlp=None):

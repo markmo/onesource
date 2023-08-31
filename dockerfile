@@ -1,9 +1,13 @@
 # base image
 FROM python:3.6.8-slim
 
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=863199
+RUN mkdir -p /usr/share/man/man1
+
 # install netcat
-RUN apt-get update && \
-    apt-get -y install netcat gcc && \
+RUN echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get -y install netcat gcc libpq-dev openjdk-8-jdk && \
     apt-get -y install --reinstall build-essential && \
     apt-get clean
 
@@ -29,13 +33,16 @@ RUN mkdir onesource
 RUN mkdir config
 RUN mkdir resources
 RUN mkdir models
+RUN mkdir -p /var/data/in
+RUN mkdir -p /var/data/out
+RUN mkdir -p /var/data/temp
 
 # add app
 COPY config/ /usr/src/app/config/
 COPY onesource/ /usr/src/app/onesource/
 COPY .env /usr/src/app
-COPY models /usr/src/app/models/
-COPY resources /usr/src/app/resources/
+# COPY models /usr/src/app/models/
+# COPY resources /usr/src/app/resources/
 COPY ./app.py /usr/src/app
 COPY ./wsgi.py /usr/src/app
 

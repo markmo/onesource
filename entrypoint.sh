@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
 
 export PYTHONPATH=.:onesource
-gunicorn -b 0.0.0.0:6000 wsgi:app
+
+# not allowing files to be uploaded
+#gunicorn -b 0.0.0.0:5000 wsgi:app
+
+python app.py

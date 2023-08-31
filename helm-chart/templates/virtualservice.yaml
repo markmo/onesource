@@ -1,0 +1,19 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: "{{ .Values.app }}-virtualservice"
+  namespace: "jhub"
+spec:
+  hosts:
+    - "{{ .Values.app }}.{{ .Values.ingress.domain }}"
+  gateways:
+    - europa-standalone-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: "{{ .Values.app }}-service.{{ .Values.namespace }}.svc.cluster.local"
+            port:
+              number: 5000

@@ -1,0 +1,17 @@
+image:
+  tag: 0.1.4
+
+app: onesource
+
+namespace: promptstore
+
+imagePullSecret:
+
+containerRegistry:
+
+ingress:
+  domain:
+
+db:
+  user:
+  pass:

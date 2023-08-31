@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  DBHOST: "postgres-postgresql.pgdatabase.svc.cluster.local"
+  DBPORT: "5432"
+  DBNAME: "{{ .Values.app }}"
+  PORT: "5000"
+kind: ConfigMap
+metadata:
+  name: "{{ .Values.app }}-config"
+  namespace: "{{ .Values.namespace }}"

@@ -5,11 +5,15 @@ import logging
 from logging import Logger
 import os
 from pipeline import HIDDEN_FILE_PREFIXES, Pipeline
-from prep_for_dr_qa import PrepForDrQAStep
 import sys
 import tempfile
-from tika_extract import TikaExtractStep
 from timeit import default_timer as timer
+
+from collect import CollectStep
+from combine import CombineStep
+from extract import ExtractStep
+from prep_for_dr_qa import PrepForDrQAStep
+from tika_extract import TikaExtractStep
 
 
 def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, overwrite: bool, delete: bool,
@@ -84,8 +88,8 @@ def create_and_run_job(read_root_dir: str, write_root_dir: str, temp_dir: str, o
         # IdentifyQuestionsNaiveStep('Identify questions'),
         # WriteToDatabaseStep('Write to database', overwrite=overwrite),
         # WriteToNeo4JStep('Write to Neo4J', overwrite=overwrite),
-        # CombineStep('Combine text', overwrite=overwrite)
-        PrepForDrQAStep('Prepare text', overwrite=overwrite),
+        # CombineStep('Combine text', overwrite=overwrite),
+        # PrepForDrQAStep('Prepare text', overwrite=overwrite),
         # ExtractEntitiesStep('Extract entities', overwrite=overwrite),
         # Parallel()([
         #     ExtractRelationsStep('Extract relations')

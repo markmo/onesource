@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.app }}"
+  labels:
+    app: "{{ .Values.app }}"
+  namespace: "{{ .Values.namespace }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{{ .Values.app }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.app }}"
+    spec:
+      imagePullSecrets:
+        - name: "{{ .Values.imagePullSecret }}"
+      initContainers:
+        - name: init-onesource
+          image: busybox:1.28
+          command: ["sh", "-c", "mkdir -p /var/data/in /var/data/out /var/data/temp"]
+      containers:
+        - name: "{{ .Values.app }}-container"
+          image: "{{ .Values.containerRegistry }}/{{ .Values.app }}:{{ .Values.image.tag }}"
+          env:
+            - name: DBHOST
+              valueFrom:
+                configMapKeyRef:
+                  key: DBHOST
+                  name: "{{ .Values.app }}-config"
+            - name: DBPORT
+              valueFrom:
+                configMapKeyRef:
+                  key: DBPORT
+                  name: "{{ .Values.app }}-config"
+            - name: DBNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DBNAME
+                  name: "{{ .Values.app }}-config"
+            - name: DBUSER
+              valueFrom:
+                secretKeyRef:
+                  key: DBUSER
+                  name: "{{ .Values.app }}-secrets"
+            - name: DBPASS
+              valueFrom:
+                secretKeyRef:
+                  key: DBPASS
+                  name: "{{ .Values.app }}-secrets"
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: PORT
+                  name: "{{ .Values.app }}-config"
+          volumeMounts:
+            - mountPath: /var/data
+              name: file-storage
+      volumes:
+        - name: file-storage
+          persistentVolumeClaim:
+            claimName: file-storage-pvc
